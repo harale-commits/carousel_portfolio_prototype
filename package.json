@@ -1,0 +1,18 @@
+{
+  "name": "carousel-portfolio",
+  "private": true,
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "serve": "npm run build && npx --yes serve dist -l 8080",
+    "preview": "npm run build && npx --yes serve dist -l 8080",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name=carousel-portfolio",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "wrangler": "^4.14.0"
+  }
+}

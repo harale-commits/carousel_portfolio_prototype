@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Portfolio — Curved Carousel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <a href="#" class="wordmark" aria-label="Studio">S<span class="wordmark-dot">.</span></a>
+
+  <header class="hero" id="work">
+    <div class="hero-pin">
+      <div class="ambient" aria-hidden="true">
+        <div class="ambient-glow"></div>
+        <div class="ambient-vignette"></div>
+        <div class="ambient-grain"></div>
+      </div>
+
+      <div class="hero-header">
+        <p class="hero-eyebrow">Portfolio</p>
+        <h1 class="hero-title">
+          <span class="hero-title-line">Selected</span>
+          <em class="hero-title-accent">Work</em>
+        </h1>
+      </div>
+
+      <div class="carousel-stage">
+        <svg class="arc-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <defs>
+            <linearGradient id="arc-rail-outer" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.02)" />
+              <stop offset="35%" stop-color="rgba(255,255,255,0.1)" />
+              <stop offset="50%" stop-color="rgba(255,255,255,0.18)" />
+              <stop offset="65%" stop-color="rgba(255,255,255,0.1)" />
+              <stop offset="100%" stop-color="rgba(255,255,255,0.02)" />
+            </linearGradient>
+            <linearGradient id="arc-rail-inner" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(99,102,241,0)" />
+              <stop offset="50%" stop-color="rgba(99,102,241,0.45)" />
+              <stop offset="100%" stop-color="rgba(99,102,241,0)" />
+            </linearGradient>
+            <filter id="dot-glow" x="-200%" y="-200%" width="500%" height="500%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <path id="arc-track-outer" class="arc-track arc-track--outer" d="M 35,398 Q 500,18 965,398" />
+          <path id="arc-track-inner" class="arc-track arc-track--inner" d="M 85,362 Q 500,62 915,362" />
+          <path id="arc-path" class="arc-path" d="M 60,380 Q 500,40 940,380" />
+          <circle id="arc-light" class="arc-light" r="5" cx="500" cy="210" filter="url(#dot-glow)" />
+        </svg>
+
+        <div class="carousel-track">
+          <article class="carousel-item" data-index="0">
+            <div class="card" style="--hue: 250" data-project="0" data-frame="brand">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--brand">
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-brand">
+                      <span class="scene-brand-mark">L</span>
+                      <span class="scene-brand-ring"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">01</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">Branding</span>
+                  <span class="card-year">2024</span>
+                </div>
+                <h3 class="card-title">Lumina Identity</h3>
+                <p class="card-text">Visual system for a sustainable lighting brand.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+
+          <article class="carousel-item" data-index="1">
+            <div class="card" style="--hue: 320" data-project="1" data-frame="browser">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--browser">
+                  <div class="card-frame-chrome">
+                    <span class="card-frame-dot"></span>
+                    <span class="card-frame-dot"></span>
+                    <span class="card-frame-dot"></span>
+                  </div>
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-dashboard">
+                      <div class="scene-dash-bar" style="--h: 42%"></div>
+                      <div class="scene-dash-bar" style="--h: 68%"></div>
+                      <div class="scene-dash-bar" style="--h: 55%"></div>
+                      <div class="scene-dash-bar" style="--h: 82%"></div>
+                      <div class="scene-dash-bar" style="--h: 38%"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">02</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">Web App</span>
+                  <span class="card-year">2024</span>
+                </div>
+                <h3 class="card-title">Pulse Dashboard</h3>
+                <p class="card-text">Real-time analytics with fluid data visualization.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+
+          <article class="carousel-item" data-index="2">
+            <div class="card" style="--hue: 180" data-project="2" data-frame="store">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--store">
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-store">
+                      <div class="scene-store-item"></div>
+                      <div class="scene-store-item"></div>
+                      <div class="scene-store-item scene-store-item--wide"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">03</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">E-Commerce</span>
+                  <span class="card-year">2023</span>
+                </div>
+                <h3 class="card-title">Arc Store</h3>
+                <p class="card-text">Immersive shopping experience for artisan goods.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+
+          <article class="carousel-item" data-index="3">
+            <div class="card" style="--hue: 40" data-project="3" data-frame="phone">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--phone">
+                  <div class="card-frame-notch" aria-hidden="true"></div>
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-app">
+                      <div class="scene-app-map"></div>
+                      <div class="scene-app-nav">
+                        <span></span><span></span><span class="is-active"></span><span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">04</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">Mobile</span>
+                  <span class="card-year">2024</span>
+                </div>
+                <h3 class="card-title">Wander App</h3>
+                <p class="card-text">Location-aware travel companion with offline maps.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+
+          <article class="carousel-item" data-index="4">
+            <div class="card" style="--hue: 210" data-project="4" data-frame="gallery">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--gallery">
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-webgl">
+                      <div class="scene-webgl-orb"></div>
+                      <div class="scene-webgl-grid"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">05</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">3D / WebGL</span>
+                  <span class="card-year">2023</span>
+                </div>
+                <h3 class="card-title">Orbit Gallery</h3>
+                <p class="card-text">Virtual exhibition space for digital sculptors.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+
+          <article class="carousel-item" data-index="5">
+            <div class="card" style="--hue: 140" data-project="5" data-frame="editorial">
+              <div class="card-cursor-light" aria-hidden="true"></div>
+              <div class="card-visual">
+                <div class="card-visual-frame card-visual-frame--editorial">
+                  <div class="card-visual-bg"></div>
+                  <div class="card-visual-scene">
+                    <div class="scene-editorial">
+                      <span class="scene-editorial-kicker">Issue 12</span>
+                      <span class="scene-editorial-headline">Forma</span>
+                      <span class="scene-editorial-rule"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-visual-vignette" aria-hidden="true"></div>
+                <div class="card-visual-grain" aria-hidden="true"></div>
+                <span class="card-number">06</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-tag">Editorial</span>
+                  <span class="card-year">2024</span>
+                </div>
+                <h3 class="card-title">Forma Magazine</h3>
+                <p class="card-text">Typography-forward editorial site for design culture.</p>
+                <div class="card-footer">
+                  <span class="card-hint-services">Services</span>
+                  <a class="card-cta" href="#">View project →</a>
+                </div>
+              </div>
+              <div class="card-progress" aria-hidden="true"></div>
+            </div>
+          </article>
+        </div>
+
+        <p class="carousel-scroll-hint" aria-hidden="true"><span>Scroll to explore</span></p>
+
+        <div class="services-orbit" id="services-orbit" aria-hidden="true"></div>
+        <svg class="services-connectors" id="services-connectors" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      </div>
+    </div>
+  </header>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/MotionPathPlugin.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/services-orbit.js"></script>
+  <script src="js/card-effects.js"></script>
+</body>
+</html>
