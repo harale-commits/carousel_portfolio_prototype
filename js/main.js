@@ -1,4 +1,4 @@
-gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, ScrollToPlugin);
 
 const items = gsap.utils.toArray(".carousel-item");
 const total = items.length;
@@ -20,21 +20,29 @@ const CONFIG = {
     parallaxY: 8,
   },
   mobile: {
-    scrollPerCard: 120,
+    scrollPerCard: 130,
     scaleMax: 1,
-    scaleMin: 0.7,
-    opacityMin: 0.38,
+    scaleMin: 0.55,
+    opacityMin: 0.12,
     maxVisibleRel: 1,
-    parallaxX: 4,
-    parallaxY: 3,
+    glowOnlyRel: true,
+    peerScale: 0.62,
+    peerOpacity: 0.22,
+    peerPush: 0.52,
+    parallaxX: 2,
+    parallaxY: 2,
   },
   small: {
-    scrollPerCard: 105,
-    scaleMax: 0.96,
-    scaleMin: 0.66,
-    opacityMin: 0.32,
+    scrollPerCard: 115,
+    scaleMax: 1,
+    scaleMin: 0.5,
+    opacityMin: 0.1,
     maxVisibleRel: 1,
-    parallaxX: 3,
+    glowOnlyRel: true,
+    peerScale: 0.58,
+    peerOpacity: 0.18,
+    peerPush: 0.56,
+    parallaxX: 2,
     parallaxY: 2,
   },
 };
@@ -42,9 +50,50 @@ const CONFIG = {
 let config = CONFIG.desktop;
 let carouselTrigger = null;
 let matchMediaInstance = null;
+let lastCenterIndex = -1;
+let cachedStageMetrics = null;
+let mobileStep = 0;
+let mobileNavigating = false;
+let mobileNavCleanup = null;
+
+function getMobileScrollPerCard() {
+  return Math.round(window.innerHeight * 0.95);
+}
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isMobileCarousel() {
+  return window.innerWidth <= 900;
+}
+
+function invalidateStageMetrics() {
+  cachedStageMetrics = null;
+}
+
+function getStageMetrics() {
+  if (cachedStageMetrics) return cachedStageMetrics;
+
+  const width = stage.offsetWidth;
+  const height = stage.offsetHeight;
+  const vb = stage.querySelector(".arc-svg").viewBox.baseVal;
+  cachedStageMetrics = {
+    scaleX: width / vb.width,
+    scaleY: height / vb.height,
+    stageH: height,
+    cardW: items[0].offsetWidth,
+    cardH: items[0].offsetHeight,
+  };
+  return cachedStageMetrics;
+}
+
+function setItemFocusState(item, state) {
+  if (item.dataset.focusState === state) return;
+  item.dataset.focusState = state;
+  item.classList.remove("is-glow-peek", "is-center-focus");
+  if (state === "center") item.classList.add("is-center-focus");
+  if (state === "glow") item.classList.add("is-glow-peek");
 }
 
 function getActiveConfig() {
@@ -63,17 +112,6 @@ function getArcPoint(t) {
   const dy = 2 * mt * (cy - y0) + 2 * t * (y1 - cy);
   const angle = Math.atan2(dy, dx) * (180 / Math.PI);
   return { x, y, angle };
-}
-
-function getStageMetrics() {
-  const width = stage.offsetWidth;
-  const height = stage.offsetHeight;
-  const vb = stage.querySelector(".arc-svg").viewBox.baseVal;
-  return {
-    scaleX: width / vb.width,
-    scaleY: height / vb.height,
-    cardW: items[0].offsetWidth,
-  };
 }
 
 function wrapPathT(t) {
@@ -105,50 +143,194 @@ function getScrollSteps(scrollPos, start) {
   return (scrollPos - start) / config.scrollPerCard;
 }
 
-function placeItem(item, t, rel) {
+function getWrappedCardIndex(step) {
+  return ((step % total) + total) % total;
+}
+
+function getMobileScrollY(step) {
+  const wrapped = getWrappedCardIndex(step);
+  return carouselTrigger.start + wrapped * config.scrollPerCard;
+}
+
+function canNavigateMobile() {
+  if (!carouselTrigger || mobileNavigating) return false;
+  const y = window.scrollY;
+  return y >= carouselTrigger.start - 4 && y <= carouselTrigger.end + 4;
+}
+
+function goToMobileStep(step, duration = 0.38) {
+  if (!carouselTrigger || mobileNavigating) return;
+
+  const prevStep = mobileStep;
+  mobileStep = step;
+  if (mobileStep === prevStep) return;
+
+  mobileNavigating = true;
+  gsap.killTweensOf(mobileOffsetProxy);
+
+  const fromOffset = prevStep * SPACING;
+  const toOffset = mobileStep * SPACING;
+  mobileOffsetProxy.offset = fromOffset;
+
+  gsap.to(mobileOffsetProxy, {
+    offset: toOffset,
+    duration,
+    ease: "power2.out",
+    onUpdate: () => positionAll(mobileOffsetProxy.offset),
+    onComplete: () => {
+      positionAll(mobileStep * SPACING);
+      window.scrollTo(0, getMobileScrollY(mobileStep));
+      mobileNavigating = false;
+    },
+  });
+}
+
+const mobileOffsetProxy = { offset: 0 };
+
+function destroyMobileCardNav() {
+  if (mobileNavCleanup) {
+    mobileNavCleanup();
+    mobileNavCleanup = null;
+  }
+}
+
+function initMobileCardNav() {
+  destroyMobileCardNav();
+
+  if (!isMobileCarousel()) return;
+
+  const heroPin = document.querySelector(".hero-pin");
+  if (!heroPin) return;
+
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let touchActive = false;
+
+  const canNavigate = () => canNavigateMobile();
+
+  const onTouchStart = (e) => {
+    if (!canNavigate()) return;
+    touchActive = true;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  };
+
+  const onTouchMove = (e) => {
+    if (!canNavigateMobile()) return;
+    e.preventDefault();
+  };
+
+  const onTouchEnd = (e) => {
+    if (!touchActive || !canNavigate()) {
+      touchActive = false;
+      return;
+    }
+
+    touchActive = false;
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    const elapsed = Date.now() - touchStartTime;
+
+    if (Math.abs(dy) < 40) return;
+
+    const direction = dy > 0 ? 1 : -1;
+    goToMobileStep(mobileStep + direction);
+  };
+
+  const onWheel = (e) => {
+    if (!canNavigate()) return;
+    e.preventDefault();
+    if (Math.abs(e.deltaY) < 8) return;
+    const direction = e.deltaY > 0 ? 1 : -1;
+    goToMobileStep(mobileStep + direction);
+  };
+
+  heroPin.addEventListener("touchstart", onTouchStart, { passive: true });
+  heroPin.addEventListener("touchmove", onTouchMove, { passive: false });
+  heroPin.addEventListener("touchend", onTouchEnd, { passive: true });
+  window.addEventListener("wheel", onWheel, { passive: false });
+
+  mobileNavCleanup = () => {
+    heroPin.removeEventListener("touchstart", onTouchStart);
+    heroPin.removeEventListener("touchmove", onTouchMove);
+    heroPin.removeEventListener("touchend", onTouchEnd);
+    window.removeEventListener("wheel", onWheel);
+  };
+}
+
+function placeItem(item, t, rel, metrics) {
   const visualBg = item.querySelector(".card-visual-bg");
+  const mobileFocus = isMobileCarousel() && config.glowOnlyRel;
+  const { scaleX, scaleY, stageH, cardW, cardH } = metrics;
 
   if (Math.abs(rel) > config.maxVisibleRel) {
-    gsap.set(item, { autoAlpha: 0 });
+    gsap.set(item, { autoAlpha: 0, force3D: true });
+    setItemFocusState(item, "none");
     return;
   }
 
   if (t < -0.05 || t > 1.05) {
-    gsap.set(item, { autoAlpha: 0 });
+    gsap.set(item, { autoAlpha: 0, force3D: true });
+    setItemFocusState(item, "none");
     return;
   }
 
   const clamped = gsap.utils.clamp(0, 1, t);
-  const { scaleX, scaleY, cardW } = getStageMetrics();
   const point = getArcPoint(clamped);
 
-  const parallaxX = gsap.utils.clamp(
-    -config.parallaxX,
-    config.parallaxX,
-    -point.angle * 0.4
-  );
-  const parallaxY = gsap.utils.clamp(
-    -config.parallaxY,
-    config.parallaxY,
-    (clamped - 0.5) * -18
-  );
+  let scale = getScaleForPosition(clamped);
+  let opacity = getOpacityForPosition(clamped);
+  let rotation = point.angle;
+  let xOffset = 0;
+
+  if (mobileFocus) {
+    if (rel === 0) {
+      scale = config.scaleMax;
+      opacity = 1;
+      rotation = 0;
+      setItemFocusState(item, "center");
+    } else if (Math.abs(rel) === 1) {
+      scale = config.peerScale;
+      opacity = config.peerOpacity;
+      rotation = rel * 7;
+      xOffset = rel * cardW * config.peerPush;
+      setItemFocusState(item, "glow");
+    }
+  } else {
+    setItemFocusState(item, "none");
+  }
+
+  const parallaxX = mobileFocus
+    ? 0
+    : gsap.utils.clamp(-config.parallaxX, config.parallaxX, -rotation * 0.4);
+  const parallaxY = mobileFocus
+    ? 0
+    : gsap.utils.clamp(-config.parallaxY, config.parallaxY, (clamped - 0.5) * -18);
+
+  const yPos = mobileFocus
+    ? (stageH + cardH * scale) / 2 - cardH
+    : point.y * scaleY;
 
   gsap.set(item, {
-    x: point.x * scaleX - cardW / 2,
-    y: point.y * scaleY,
-    rotation: point.angle,
+    x: point.x * scaleX - cardW / 2 + xOffset,
+    y: yPos,
+    rotation,
     transformOrigin: "50% 100%",
-    scale: getScaleForPosition(clamped),
-    autoAlpha: getOpacityForPosition(clamped),
+    scale,
+    autoAlpha: opacity,
+    zIndex: rel === 0 ? 3 : 1,
+    force3D: true,
   });
 
-  if (visualBg) {
+  if (visualBg && !mobileFocus) {
     gsap.set(visualBg, {
       x: parallaxX,
       y: parallaxY,
-      rotation: -point.angle * 0.12,
+      rotation: -rotation * 0.12,
       scale: 1.12,
+      force3D: true,
     });
+  } else if (visualBg) {
+    gsap.set(visualBg, { x: 0, y: 0, rotation: 0, scale: 1, clearProps: "transform" });
   }
 }
 
@@ -169,19 +351,29 @@ function updateArcLight(t) {
 }
 
 function positionAll(offset) {
+  invalidateStageMetrics();
   const steps = offset / SPACING;
   const centerIndex = ((Math.round(steps) % total) + total) % total;
   const frac = steps - Math.round(steps);
   const centerT = 0.5 - frac * SPACING;
+  const metrics = getStageMetrics();
+  const mobile = isMobileCarousel();
 
   items.forEach((item, i) => {
     const rel = getRelativeIndex(i, centerIndex, total);
-    placeItem(item, wrapPathT(centerT + rel * SPACING), rel);
+    placeItem(item, wrapPathT(centerT + rel * SPACING), rel, metrics);
   });
 
-  updateActiveState(centerIndex);
-  updateGlowHue(centerIndex);
-  updateArcLight(gsap.utils.clamp(0, 1, centerT));
+  if (centerIndex !== lastCenterIndex) {
+    updateActiveState(centerIndex);
+    updateGlowHue(centerIndex);
+    lastCenterIndex = centerIndex;
+  }
+
+  if (!mobile) {
+    updateArcLight(gsap.utils.clamp(0, 1, centerT));
+  }
+
   orbitCenterT = gsap.utils.clamp(0, 1, centerT);
   updateOrbitIfVisible(centerIndex, orbitCenterT);
 }
@@ -241,15 +433,52 @@ function initCarousel() {
     carouselTrigger = null;
   }
 
+  destroyMobileCardNav();
+
   config = getActiveConfig();
+  const mobile = isMobileCarousel();
+
+  if (mobile) {
+    config.scrollPerCard = getMobileScrollPerCard();
+  }
+
+  invalidateStageMetrics();
+  lastCenterIndex = -1;
+  mobileStep = 0;
+  mobileNavigating = false;
+  stage?.classList.toggle("carousel-stage--mobile-focus", mobile);
+  document.body.classList.toggle("is-mobile-perf", mobile);
 
   if (prefersReducedMotion()) {
     positionAll(0);
     return;
   }
 
-  const scrollDistance = window.innerHeight * 50;
+  const scrollDistance = mobile
+    ? config.scrollPerCard * (total + 4)
+    : window.innerHeight * 50;
   const stepsInScroll = scrollDistance / config.scrollPerCard;
+
+  if (mobile) {
+    mobileOffsetProxy.offset = 0;
+
+    carouselTrigger = ScrollTrigger.create({
+      trigger: ".hero",
+      start: "top top",
+      end: `+=${scrollDistance}`,
+      pin: ".hero-pin",
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
+      onRefresh: () => {
+        invalidateStageMetrics();
+        config.scrollPerCard = getMobileScrollPerCard();
+      },
+    });
+
+    initMobileCardNav();
+    positionAll(0);
+    return;
+  }
 
   carouselTrigger = ScrollTrigger.create({
     trigger: ".hero",
@@ -319,9 +548,12 @@ window.addEventListener("load", () => {
 });
 
 window.addEventListener("resize", () => {
+  invalidateStageMetrics();
   ScrollTrigger.refresh();
   if (carouselTrigger) {
     config = getActiveConfig();
+    stage?.classList.toggle("carousel-stage--mobile-focus", isMobileCarousel());
+    document.body.classList.toggle("is-mobile-perf", isMobileCarousel());
     positionAll(getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start));
   }
 });

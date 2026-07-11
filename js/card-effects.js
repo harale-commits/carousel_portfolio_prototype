@@ -48,12 +48,12 @@ function animateCardActivation(index, prevIndex) {
     resetCardContent(prevCard);
   }
 
-  bindCursorLight(card);
-
-  if (prefersReducedMotion()) {
+  if (isMobileCarousel() || prefersReducedMotion()) {
     gsap.set(card, { y: -10 });
     return;
   }
+
+  bindCursorLight(card);
 
   const scene = card.querySelector(".card-visual-scene");
   const targets = CARD_REVEAL_SELECTORS.map((s) => card.querySelector(s)).filter(Boolean);
@@ -135,8 +135,10 @@ function bindCursorLight(card) {
 
 function initCardEffects() {
   const firstActive = getActiveCard();
-  if (firstActive) {
+  if (firstActive && !isMobileCarousel()) {
     if (!prefersReducedMotion()) gsap.set(firstActive, { y: -12 });
     bindCursorLight(firstActive);
+  } else if (firstActive) {
+    gsap.set(firstActive, { y: -10 });
   }
 }
