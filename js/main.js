@@ -12,9 +12,9 @@ const PERIOD = SPACING * total;
 const CONFIG = {
   desktop: {
     scrollPerCard: 140,
-    scaleMax: 1.08,
-    scaleMin: 0.72,
-    opacityMin: 0.3,
+    scaleMax: 1,
+    scaleMin: 0.78,
+    opacityMin: 0.38,
     maxVisibleRel: 3,
     parallaxX: 14,
     parallaxY: 8,
@@ -54,7 +54,43 @@ let lastCenterIndex = -1;
 let cachedStageMetrics = null;
 let mobileStep = 0;
 let mobileNavigating = false;
+let serviceViewScrollLocked = false;
+let lockedScrollY = 0;
+
+function isServiceViewActive() {
+  return !!document.querySelector(".carousel-stage.is-service-view");
+}
+
+function lockServiceViewScroll() {
+  if (serviceViewScrollLocked) return;
+  serviceViewScrollLocked = true;
+  lockedScrollY = window.scrollY;
+  document.body.classList.add("is-service-view-locked");
+}
+
+function unlockServiceViewScroll() {
+  if (!serviceViewScrollLocked) return;
+  serviceViewScrollLocked = false;
+  document.body.classList.remove("is-service-view-locked");
+}
+
+function onServiceViewScrollBlock(e) {
+  if (!serviceViewScrollLocked) return;
+  e.preventDefault();
+}
+
+function onServiceViewScrollRestore() {
+  if (!serviceViewScrollLocked) return;
+  if (Math.abs(window.scrollY - lockedScrollY) > 1) {
+    window.scrollTo(0, lockedScrollY);
+  }
+}
 let mobileNavCleanup = null;
+let glowHueProxy = { value: 280 };
+let glowHueTween = null;
+let desktopRevealPlayed = false;
+let heroIntroPlayed = false;
+const progressDots = gsap.utils.toArray(".carousel-progress__dot");
 
 function getMobileScrollPerCard() {
   return Math.round(window.innerHeight * 0.95);
@@ -62,6 +98,10 @@ function getMobileScrollPerCard() {
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isHeroIntroPending() {
+  return !heroIntroPlayed && !prefersReducedMotion();
 }
 
 function isMobileCarousel() {
@@ -78,12 +118,15 @@ function getStageMetrics() {
   const width = stage.offsetWidth;
   const height = stage.offsetHeight;
   const vb = stage.querySelector(".arc-svg").viewBox.baseVal;
+  const cardEl = items[0].querySelector(".card");
+  const cardStyle = getComputedStyle(cardEl);
+  const cardMarginTop = parseFloat(cardStyle.marginTop) || 0;
   cachedStageMetrics = {
     scaleX: width / vb.width,
     scaleY: height / vb.height,
     stageH: height,
     cardW: items[0].offsetWidth,
-    cardH: items[0].offsetHeight,
+    cardH: cardEl.offsetHeight + cardMarginTop,
   };
   return cachedStageMetrics;
 }
@@ -154,12 +197,13 @@ function getMobileScrollY(step) {
 
 function canNavigateMobile() {
   if (!carouselTrigger || mobileNavigating) return false;
+  if (document.querySelector(".carousel-stage.is-service-view")) return false;
   const y = window.scrollY;
   return y >= carouselTrigger.start - 4 && y <= carouselTrigger.end + 4;
 }
 
-function goToMobileStep(step, duration = 0.38) {
-  if (!carouselTrigger || mobileNavigating) return;
+function goToMobileStep(step, duration = 0.22) {
+  if (!carouselTrigger || mobileNavigating || isServiceViewActive()) return;
 
   const prevStep = mobileStep;
   mobileStep = step;
@@ -178,9 +222,9 @@ function goToMobileStep(step, duration = 0.38) {
     ease: "power2.out",
     onUpdate: () => positionAll(mobileOffsetProxy.offset),
     onComplete: () => {
+      mobileNavigating = false;
       positionAll(mobileStep * SPACING);
       window.scrollTo(0, getMobileScrollY(mobileStep));
-      mobileNavigating = false;
     },
   });
 }
@@ -202,17 +246,19 @@ function initMobileCardNav() {
   const heroPin = document.querySelector(".hero-pin");
   if (!heroPin) return;
 
+  let touchStartX = 0;
   let touchStartY = 0;
-  let touchStartTime = 0;
   let touchActive = false;
+
+  const SWIPE_THRESHOLD = 40;
 
   const canNavigate = () => canNavigateMobile();
 
   const onTouchStart = (e) => {
     if (!canNavigate()) return;
     touchActive = true;
+    touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
-    touchStartTime = Date.now();
   };
 
   const onTouchMove = (e) => {
@@ -227,12 +273,18 @@ function initMobileCardNav() {
     }
 
     touchActive = false;
-    const dy = touchStartY - e.changedTouches[0].clientY;
-    const elapsed = Date.now() - touchStartTime;
+    const touch = e.changedTouches[0];
+    const dx = touchStartX - touch.clientX;
+    const dy = touchStartY - touch.clientY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
 
-    if (Math.abs(dy) < 40) return;
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
 
-    const direction = dy > 0 ? 1 : -1;
+    const direction = absX > absY
+      ? (dx > 0 ? 1 : -1)
+      : (dy > 0 ? 1 : -1);
+
     goToMobileStep(mobileStep + direction);
   };
 
@@ -258,8 +310,7 @@ function initMobileCardNav() {
 }
 
 function placeItem(item, t, rel, metrics) {
-  const visualBg = item.querySelector(".card-visual-bg");
-  const mobileFocus = isMobileCarousel() && config.glowOnlyRel;
+  const mobileFocus = !!config.glowOnlyRel;
   const { scaleX, scaleY, stageH, cardW, cardH } = metrics;
 
   if (Math.abs(rel) > config.maxVisibleRel) {
@@ -297,47 +348,123 @@ function placeItem(item, t, rel, metrics) {
     }
   } else {
     setItemFocusState(item, "none");
+    if (rel === 0) {
+      scale = 1;
+      opacity = 1;
+      rotation = 0;
+    }
   }
-
-  const parallaxX = mobileFocus
-    ? 0
-    : gsap.utils.clamp(-config.parallaxX, config.parallaxX, -rotation * 0.4);
-  const parallaxY = mobileFocus
-    ? 0
-    : gsap.utils.clamp(-config.parallaxY, config.parallaxY, (clamped - 0.5) * -18);
 
   const yPos = mobileFocus
     ? (stageH + cardH * scale) / 2 - cardH
     : point.y * scaleY;
 
   gsap.set(item, {
-    x: point.x * scaleX - cardW / 2 + xOffset,
-    y: yPos,
-    rotation,
+    x: Math.round(point.x * scaleX - cardW / 2 + xOffset),
+    y: Math.round(yPos),
+    rotation: mobileFocus ? 0 : Math.round(rotation * 10) / 10,
     transformOrigin: "50% 100%",
     scale,
-    autoAlpha: opacity,
+    autoAlpha: isHeroIntroPending() ? 0 : opacity,
     zIndex: rel === 0 ? 3 : 1,
-    force3D: true,
+    force3D: rel !== 0,
   });
+}
 
-  if (visualBg && !mobileFocus) {
-    gsap.set(visualBg, {
-      x: parallaxX,
-      y: parallaxY,
-      rotation: -rotation * 0.12,
-      scale: 1.12,
-      force3D: true,
-    });
-  } else if (visualBg) {
-    gsap.set(visualBg, { x: 0, y: 0, rotation: 0, scale: 1, clearProps: "transform" });
-  }
+function triggerHueSweep(index) {
+  const sweep = items[index]?.querySelector(".file-sweep");
+  if (!sweep || prefersReducedMotion()) return;
+
+  sweep.classList.remove("is-sweeping");
+  requestAnimationFrame(() => {
+    sweep.classList.add("is-sweeping");
+  });
 }
 
 function updateGlowHue(index) {
   const card = items[index]?.querySelector(".card");
-  const hue = card?.style.getPropertyValue("--hue").trim() || "250";
-  document.documentElement.style.setProperty("--glow-hue", hue);
+  const hue = parseFloat(card?.style.getPropertyValue("--hue")) || 280;
+
+  if (glowHueTween) glowHueTween.kill();
+  glowHueTween = gsap.to(glowHueProxy, {
+    value: hue,
+    duration: 0.7,
+    ease: "power2.out",
+    onUpdate: () => {
+      document.documentElement.style.setProperty("--glow-hue", glowHueProxy.value);
+    },
+  });
+
+  triggerHueSweep(index);
+}
+
+function updateProgressDots(index) {
+  progressDots.forEach((dot, i) => {
+    const active = i === index;
+    dot.classList.toggle("is-active", active);
+    dot.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
+function navigateToCard(index) {
+  if (!carouselTrigger || index < 0 || index >= total) return;
+  if (document.querySelector(".carousel-stage.is-service-view")) return;
+
+  if (isMobileCarousel()) {
+    const current = lastCenterIndex >= 0 ? lastCenterIndex : 0;
+    let delta = index - current;
+    if (delta > total / 2) delta -= total;
+    if (delta < -total / 2) delta += total;
+    goToMobileStep(mobileStep + delta);
+    return;
+  }
+
+  const target = carouselTrigger.start + index * config.scrollPerCard;
+  if (prefersReducedMotion()) {
+    window.scrollTo(0, target);
+    return;
+  }
+
+  gsap.to(window, {
+    scrollTo: target,
+    duration: 0.65,
+    ease: "power2.inOut",
+  });
+}
+
+function initProgressNav() {
+  progressDots.forEach((dot) => {
+    dot.addEventListener("click", () => {
+      const index = parseInt(dot.dataset.index, 10);
+      if (!Number.isNaN(index)) navigateToCard(index);
+    });
+  });
+}
+
+function initKeyboardNav() {
+  window.addEventListener("keydown", (e) => {
+    if (document.querySelector(".carousel-stage.is-service-view")) return;
+    if (isMobileCarousel()) {
+      if (!canNavigateMobile()) return;
+    } else if (!carouselTrigger?.isActive) {
+      return;
+    }
+    if (e.target.closest("input, textarea, select, a[href^='mailto']")) return;
+
+    const current = lastCenterIndex >= 0 ? lastCenterIndex : 0;
+    let next = current;
+
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      next = (current + 1) % total;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      next = (current - 1 + total) % total;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    navigateToCard(next);
+  });
 }
 
 function updateArcLight(t) {
@@ -351,13 +478,14 @@ function updateArcLight(t) {
 }
 
 function positionAll(offset) {
-  invalidateStageMetrics();
+  if (isServiceViewActive()) return;
+
   const steps = offset / SPACING;
   const centerIndex = ((Math.round(steps) % total) + total) % total;
   const frac = steps - Math.round(steps);
   const centerT = 0.5 - frac * SPACING;
   const metrics = getStageMetrics();
-  const mobile = isMobileCarousel();
+  const mobile = !!config.glowOnlyRel;
 
   items.forEach((item, i) => {
     const rel = getRelativeIndex(i, centerIndex, total);
@@ -367,6 +495,7 @@ function positionAll(offset) {
   if (centerIndex !== lastCenterIndex) {
     updateActiveState(centerIndex);
     updateGlowHue(centerIndex);
+    updateProgressDots(centerIndex);
     lastCenterIndex = centerIndex;
   }
 
@@ -374,8 +503,7 @@ function positionAll(offset) {
     updateArcLight(gsap.utils.clamp(0, 1, centerT));
   }
 
-  orbitCenterT = gsap.utils.clamp(0, 1, centerT);
-  updateOrbitIfVisible(centerIndex, orbitCenterT);
+  stage?.classList.add("is-ready");
 }
 
 function updateActiveState(index) {
@@ -383,7 +511,6 @@ function updateActiveState(index) {
   items.forEach((item, i) => {
     item.classList.toggle("is-active", i === index);
   });
-  if (prevActive !== -1 && prevActive !== index) hideOrbit();
   if (prevActive !== index) animateCardActivation(index, prevActive);
 }
 
@@ -392,6 +519,54 @@ function getOffsetFromScroll(scrollPos, start) {
 }
 
 function initArcDraw() {
+  if (prefersReducedMotion()) {
+    gsap.set(["#arc-track-outer", "#arc-track-inner"], { strokeDashoffset: 0 });
+  }
+}
+
+function splitHeroTitleWords() {
+  const accent = document.querySelector(".hero-title-accent");
+  if (!accent || accent.dataset.split === "true") {
+    return accent ? accent.querySelectorAll(".hero-title-word") : [];
+  }
+
+  const text = accent.textContent.trim();
+  accent.dataset.split = "true";
+  accent.innerHTML = text
+    .split(/\s+/)
+    .map((word) => `<span class="hero-title-word">${word}</span>`)
+    .join(" ");
+
+  return accent.querySelectorAll(".hero-title-word");
+}
+
+function prepHeroIntro() {
+  if (prefersReducedMotion() || heroIntroPlayed) return null;
+
+  const heroPin = document.querySelector(".hero-pin");
+  heroPin?.classList.add("is-hero-intro-pending");
+
+  const words = splitHeroTitleWords();
+  const cta = document.querySelector(".hero-services-cta");
+
+  gsap.set(words, { autoAlpha: 0, y: 28, filter: "blur(14px)" });
+  if (cta) gsap.set(cta, { autoAlpha: 0, y: 16, filter: "blur(10px)" });
+  gsap.set(".carousel-item, .carousel-progress, .carousel-scroll-hint", { autoAlpha: 0 });
+  if (!isMobileCarousel()) gsap.set(".arc-svg", { autoAlpha: 0 });
+
+  return words;
+}
+
+function revealCarouselChrome() {
+  gsap.to(".carousel-progress, .carousel-scroll-hint", {
+    autoAlpha: 1,
+    duration: 0.45,
+    stagger: 0.08,
+    ease: "power2.out",
+  });
+}
+
+function playMobileCarouselIntro() {
   const paths = ["#arc-track-outer", "#arc-track-inner"];
 
   paths.forEach((selector) => {
@@ -404,27 +579,177 @@ function initArcDraw() {
     });
   });
 
-  if (prefersReducedMotion()) {
-    gsap.set(paths, { strokeDashoffset: 0 });
+  gsap.set(".arc-svg", { autoAlpha: 1 });
+  refreshCarouselPosition();
+
+  const itemStates = items.map((item) => ({
+    item,
+    opacity: gsap.getProperty(item, "opacity"),
+  }));
+
+  itemStates.forEach(({ item }) => gsap.set(item, { autoAlpha: 0 }));
+
+  const tl = gsap.timeline();
+
+  tl.to(paths, {
+    strokeDashoffset: 0,
+    duration: 1.2,
+    stagger: 0.08,
+    ease: "power2.inOut",
+  });
+
+  itemStates.forEach(({ item, opacity }, index) => {
+    tl.to(
+      item,
+      {
+        autoAlpha: opacity,
+        duration: 0.5,
+        ease: "power3.out",
+      },
+      0.35 + index * 0.06
+    );
+  });
+
+  tl.add(revealCarouselChrome, 0.45);
+}
+
+function playCarouselIntro() {
+  if (heroIntroPlayed) return;
+  heroIntroPlayed = true;
+
+  document.querySelector(".hero-pin")?.classList.remove("is-hero-intro-pending");
+
+  if (isMobileCarousel()) {
+    playMobileCarouselIntro();
     return;
   }
 
-  gsap
-    .timeline({ delay: 0.6 })
-    .to("#arc-track-outer", {
-      strokeDashoffset: 0,
-      duration: 1.6,
-      ease: "power2.inOut",
-    })
-    .to(
-      "#arc-track-inner",
+  initDesktopReveal();
+  revealCarouselChrome();
+}
+
+function initHeroIntro() {
+  if (prefersReducedMotion()) {
+    heroIntroPlayed = true;
+    document.querySelector(".hero-pin")?.classList.remove("is-hero-intro-pending");
+    gsap.set(".carousel-item, .carousel-progress, .carousel-scroll-hint, .arc-svg", { autoAlpha: 1 });
+    return;
+  }
+
+  const words = prepHeroIntro();
+  const cta = document.querySelector(".hero-services-cta");
+
+  if (!words.length) {
+    playCarouselIntro();
+    return;
+  }
+
+  const tl = gsap.timeline({
+    onComplete: playCarouselIntro,
+  });
+
+  tl.to(words, {
+    autoAlpha: 1,
+    y: 0,
+    filter: "blur(0px)",
+    duration: 0.82,
+    stagger: 0.1,
+    ease: "power3.out",
+  }, 0.25);
+
+  if (cta) {
+    tl.to(
+      cta,
       {
-        strokeDashoffset: 0,
-        duration: 1.2,
-        ease: "power2.inOut",
+        autoAlpha: 1,
+        y: 0,
+        filter: "blur(0px)",
+        duration: 0.72,
+        ease: "power3.out",
       },
-      "-=1.1"
+      "-=0.28"
     );
+  }
+}
+
+function prepDesktopReveal() {
+  if (isMobileCarousel() || prefersReducedMotion() || desktopRevealPlayed) return;
+
+  stage?.classList.add("is-desktop-reveal-pending");
+
+  const paths = ["#arc-track-outer", "#arc-track-inner"];
+  paths.forEach((selector) => {
+    const path = document.querySelector(selector);
+    if (!path) return;
+    const length = path.getTotalLength();
+    gsap.set(path, {
+      strokeDasharray: length,
+      strokeDashoffset: length,
+    });
+  });
+
+  if (arcLight) gsap.set(arcLight, { autoAlpha: 0 });
+}
+
+function initDesktopReveal() {
+  if (isMobileCarousel() || prefersReducedMotion() || desktopRevealPlayed) return;
+
+  desktopRevealPlayed = true;
+
+  const outer = document.querySelector("#arc-track-outer");
+  const inner = document.querySelector("#arc-track-inner");
+  if (!outer || !inner) {
+    stage?.classList.remove("is-desktop-reveal-pending");
+    return;
+  }
+
+  refreshCarouselPosition();
+
+  const orderedItems = items
+    .map((item) => ({
+      item,
+      x: gsap.getProperty(item, "x"),
+      opacity: gsap.getProperty(item, "opacity"),
+    }))
+    .sort((a, b) => a.x - b.x);
+
+  orderedItems.forEach(({ item, x }) => {
+    gsap.set(item, { x: x - 76, autoAlpha: 0 });
+  });
+
+  stage?.classList.remove("is-desktop-reveal-pending");
+
+  gsap.set(".arc-svg", { autoAlpha: 1 });
+
+  const tl = gsap.timeline();
+
+  tl.to(
+    outer,
+    { strokeDashoffset: 0, duration: 1.05, ease: "power2.inOut" },
+    0
+  );
+  tl.to(
+    inner,
+    { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut" },
+    0.1
+  );
+
+  orderedItems.forEach(({ item, x, opacity }, index) => {
+    tl.to(
+      item,
+      {
+        x,
+        autoAlpha: opacity,
+        duration: 0.52,
+        ease: "power3.out",
+      },
+      0.16 + index * 0.1
+    );
+  });
+
+  if (arcLight) {
+    tl.to(arcLight, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.5);
+  }
 }
 
 function initCarousel() {
@@ -485,16 +810,17 @@ function initCarousel() {
     start: "top top",
     end: `+=${scrollDistance}`,
     pin: ".hero-pin",
-    scrub: 0.5,
+    scrub: true,
     anticipatePin: 1,
     invalidateOnRefresh: true,
     snap: {
       snapTo: (progress) => Math.round(progress * stepsInScroll) / stepsInScroll,
-      duration: { min: 0.15, max: 0.45 },
-      delay: 0.06,
-      ease: "power2.out",
+      duration: { min: 0.08, max: 0.2 },
+      delay: 0,
+      ease: "power1.out",
     },
     onUpdate: (self) => {
+      if (isServiceViewActive()) return;
       positionAll(getOffsetFromScroll(self.scroll(), self.start));
     },
   });
@@ -504,19 +830,8 @@ function initCarousel() {
       ? getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start)
       : 0
   );
-}
 
-function initHero() {
-  if (prefersReducedMotion()) return;
-
-  gsap.from(".hero-eyebrow, .hero-title-line, .hero-title-accent", {
-    y: 20,
-    autoAlpha: 0,
-    duration: 0.9,
-    stagger: 0.1,
-    ease: "power3.out",
-    delay: 0.15,
-  });
+  if (!mobile) prepDesktopReveal();
 }
 
 function initResponsive() {
@@ -538,22 +853,32 @@ function initResponsive() {
   );
 }
 
+function refreshCarouselPosition() {
+  if (!carouselTrigger) return;
+  const offset = isMobileCarousel()
+    ? mobileStep * SPACING
+    : getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start);
+  positionAll(offset);
+}
+
 window.addEventListener("load", () => {
-  initHero();
-  initArcDraw();
-  initServicesOrbit();
+  prepHeroIntro();
   initResponsive();
+  initHeroIntro();
+  initArcDraw();
+  initProgressNav();
+  initKeyboardNav();
   initCardEffects();
+  initServiceScreen();
+  window.addEventListener("wheel", onServiceViewScrollBlock, { passive: false });
+  window.addEventListener("touchmove", onServiceViewScrollBlock, { passive: false });
+  window.addEventListener("scroll", onServiceViewScrollRestore, { passive: true });
   ScrollTrigger.refresh();
+  refreshCarouselPosition();
 });
 
 window.addEventListener("resize", () => {
   invalidateStageMetrics();
   ScrollTrigger.refresh();
-  if (carouselTrigger) {
-    config = getActiveConfig();
-    stage?.classList.toggle("carousel-stage--mobile-focus", isMobileCarousel());
-    document.body.classList.toggle("is-mobile-perf", isMobileCarousel());
-    positionAll(getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start));
-  }
+  refreshCarouselPosition();
 });
