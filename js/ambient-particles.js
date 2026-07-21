@@ -21,9 +21,9 @@ function initAmbientParticles() {
   }
 
   function particleCount() {
-    if (reducedMotion) return 90;
-    if (isMobile() || document.body.classList.contains("is-mobile-perf")) return 120;
-    return 200;
+    if (reducedMotion) return 60;
+    if (isMobile() || document.body.classList.contains("is-mobile-perf")) return 70;
+    return 110;
   }
 
   function getHue() {
@@ -72,12 +72,15 @@ function initAmbientParticles() {
   }
 
   function drawParticle(p) {
+    const scrolling = document.body.classList.contains("is-carousel-scrolling");
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.globalAlpha = p.alpha;
+    ctx.globalAlpha = scrolling ? p.alpha * 0.7 : p.alpha;
     ctx.fillStyle = `hsl(${p.hue}, ${p.sat}%, ${p.light}%)`;
-    ctx.shadowColor = `hsla(${p.hue}, 80%, 62%, 0.45)`;
-    ctx.shadowBlur = p.size * (isMobile() ? 1.4 : 1.8);
+    if (!scrolling) {
+      ctx.shadowColor = `hsla(${p.hue}, 80%, 62%, 0.45)`;
+      ctx.shadowBlur = p.size * (isMobile() ? 1.2 : 1.5);
+    }
     ctx.beginPath();
     ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
     ctx.fill();
@@ -125,8 +128,16 @@ function initAmbientParticles() {
     });
   }
 
+  let frameCount = 0;
+
   function frame(time) {
     if (!running) return;
+    frameCount += 1;
+    const scrolling = document.body.classList.contains("is-carousel-scrolling");
+    if (scrolling && frameCount % 2 === 0) {
+      rafId = requestAnimationFrame(frame);
+      return;
+    }
     render(time);
     lastTime = time;
     rafId = requestAnimationFrame(frame);

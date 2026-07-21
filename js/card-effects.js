@@ -22,7 +22,6 @@ function getFolderParts(card) {
     badge: card.querySelector(".file-tab-badge"),
     sheets: card.querySelectorAll(".file-sheet"),
     face: card.querySelector(".file-face"),
-    clip: card.querySelector(".file-clip"),
     glow: card.querySelector(".file-glow"),
     grid: card.querySelector(".file-grid"),
     sweep: card.querySelector(".file-sweep"),
@@ -46,7 +45,6 @@ function resetCardContent(card) {
     parts.icon,
     parts.badge,
     parts.face,
-    parts.clip,
     parts.glow,
     parts.grid,
     parts.fold,
@@ -83,12 +81,12 @@ function bindFileHover(item, card) {
     if (!item.classList.contains("is-active")) return;
     if (hoverTween) hoverTween.kill();
 
-    hoverTween = gsap.timeline({ defaults: { ease: "power2.out", overwrite: "auto" } });
-    hoverTween.to(parts.sheets[0], { rotation: -7, y: 11, x: -6, duration: 0.38 }, 0);
-    hoverTween.to(parts.sheets[1], { rotation: 4.5, y: 6, x: 5, duration: 0.38 }, 0);
-    hoverTween.to(parts.face, { y: -6, duration: 0.42 }, 0);
-    hoverTween.to(parts.tab, { y: -6, duration: 0.34 }, 0);
-    if (parts.glow) hoverTween.to(parts.glow, { scale: 1.1, duration: 0.42 }, 0);
+    hoverTween = gsap.timeline({ defaults: { ease: window.Motion ? Motion.ease() : "power2.out", overwrite: "auto" } });
+    hoverTween.to(parts.sheets[0], { rotation: -7, y: 11, x: -6, duration: 0.45 }, 0);
+    hoverTween.to(parts.sheets[1], { rotation: 4.5, y: 6, x: 5, duration: 0.45 }, 0);
+    hoverTween.to(parts.face, { y: -6, duration: 0.5 }, 0);
+    hoverTween.to(parts.tab, { y: -6, duration: 0.4 }, 0);
+    if (parts.glow) hoverTween.to(parts.glow, { scale: 1.1, duration: 0.5 }, 0);
   };
 
   const onLeave = () => {
@@ -98,8 +96,8 @@ function bindFileHover(item, card) {
       rotationX: 0,
       x: 0,
       y: (i, el) => (el === parts.tab ? -2 : 0),
-      duration: 0.38,
-      ease: "power2.out",
+      duration: 0.45,
+      ease: window.Motion ? Motion.ease() : "power2.out",
       overwrite: "auto",
     });
   };
@@ -141,7 +139,6 @@ function animateFolderOpen(item, card) {
       y: (i) => (i === 0 ? 6 : 3),
     });
     gsap.set(parts.face, { rotationX: 0, y: 0 });
-    gsap.set(parts.clip, { autoAlpha: 1 });
     return;
   }
 
@@ -161,7 +158,6 @@ function animateFolderOpen(item, card) {
     x: (i) => (i === 0 ? -5 : 4),
   });
   gsap.set(parts.face, { rotationX: 0, y: 0, autoAlpha: 1, transformOrigin: "50% 100%" });
-  gsap.set(parts.clip, { y: 0, autoAlpha: 1 });
   gsap.set(parts.grid, { autoAlpha: 0.2 });
   gsap.set(parts.glow, { scale: 1, autoAlpha: 1 });
   gsap.set(targets, { autoAlpha: 1, y: 0 });
@@ -202,7 +198,6 @@ function initCardEffects() {
         x: (i) => (i === 0 ? -5 : 4),
         autoAlpha: (i) => (i === 0 ? 0.52 : 0.76),
       });
-      gsap.set(parts.clip, { autoAlpha: 1 });
       bindFileHover(firstItem, firstActive);
     } else {
       gsap.set(firstActive, { y: -10 });

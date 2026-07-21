@@ -7,11 +7,11 @@ const THREAD_POSITIONS = {
     { x: 96, y: 14 },
   ],
   mobile: [
-    { x: 5, y: 16 },
-    { x: 20, y: 64 },
-    { x: 50, y: 90 },
-    { x: 80, y: 64 },
-    { x: 95, y: 16 },
+    { x: 17, y: 18 },
+    { x: 17, y: 62 },
+    { x: 50, y: 96 },
+    { x: 83, y: 62 },
+    { x: 83, y: 18 },
   ],
 };
 
@@ -21,68 +21,76 @@ function getThreadPositions() {
     : THREAD_POSITIONS.desktop;
 }
 
-const SERVICE_ICONS = {
-  video: {
-    left: [
-      '<polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none"/>',
-      '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M15 9v6"/>',
-    ],
-    right: [
-      '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M7.5 7.5l9 9"/>',
-      '<path d="M4 14v4M8 12v8M12 10v12M16 8v16M20 6v18"/>',
-    ],
-  },
-  graphics: {
-    left: [
-      '<path d="M4 16l4-8 4 5 4-9 4 12"/><circle cx="7" cy="7" r="2"/>',
-      '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>',
-    ],
-    right: [
-      '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>',
-      '<path d="M12 3l1.8 5.5H19l-4.5 3.3 1.7 5.2L12 16.8 7.8 17.5l1.7-5.2L5 8.5h5.2z"/>',
-    ],
-  },
-  cinematic: {
-    left: [
-      '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/>',
-      '<circle cx="12" cy="13" r="4"/><path d="M12 2v3M12 19v3"/>',
-    ],
-    right: [
-      '<path d="M4 6h16v12H4z"/><path d="M9 10l6 3-6 3z" fill="currentColor" stroke="none"/>',
-      '<path d="M3 17l4-8 4 5 4-9 4 12"/>',
-    ],
-  },
-  social: {
-    left: [
-      '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
-      '<path d="M4 12h16"/><path d="M12 4v16"/>',
-    ],
-    right: [
-      '<circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/>',
-      '<path d="M7 7h10v10H7z"/><path d="M10 10h4v4h-4z" fill="currentColor" stroke="none"/>',
-    ],
-  },
-  reel: {
-    left: [
-      '<rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/>',
-      '<path d="M10 8h4v8h-4z"/><path d="M8 6h8"/>',
-    ],
-    right: [
-      '<path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 11v1a7 7 0 0 1-14 0v-1"/>',
-      '<path d="M4 18l4-4 4 4 4-8 4 6"/>',
-    ],
-  },
-  branding: {
-    left: [
-      '<circle cx="8" cy="10" r="3"/><circle cx="16" cy="10" r="3"/><circle cx="12" cy="16" r="3"/>',
-      '<path d="M4 20h16"/><path d="M6 16h12"/>',
-    ],
-    right: [
-      '<path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/>',
-      '<path d="M7 8h10v8H7z"/><path d="M9 11h6M9 14h4"/>',
-    ],
-  },
+const BRAND_META = {
+  premiere: { label: "Adobe Premiere Pro", color: "9999FF" },
+  aftereffects: { label: "Adobe After Effects", color: "9999FF" },
+  photoshop: { label: "Adobe Photoshop", color: "31A8FF" },
+  illustrator: { label: "Adobe Illustrator", color: "FF9A00" },
+  adobe: { label: "Adobe Express", color: "EB1000" },
+  davinci: { label: "DaVinci Resolve", color: "FF6A00" },
+  capcut: { label: "CapCut", color: "FFFFFF" },
+  figma: { label: "Figma", color: "F24E1E" },
+  canva: { label: "Canva", color: "00C4CC" },
+  blender: { label: "Blender", color: "E87D0D" },
+  cinema4d: { label: "Cinema 4D", color: "3D8BFF" },
+  finalcut: { label: "Final Cut Pro", color: "FFFFFF" },
+  instagram: { label: "Instagram", color: "E4405F" },
+  tiktok: { label: "TikTok", color: "FFFFFF" },
+  youtube: { label: "YouTube", color: "FF0000" },
+  linkedin: { label: "LinkedIn", color: "0A66C2" },
+  framer: { label: "Framer", color: "FFFFFF" },
+  notion: { label: "Notion", color: "FFFFFF" },
+  lightroom: { label: "Adobe Lightroom", color: "31A8FF" },
 };
+
+/* Full-color, real logo images (rounded-square app-icon look).
+   Icon-only marks, hosted locally in assets/brands/ — no CDN dependency. */
+const BRAND_LOGOS = {
+  premiere: "assets/brands/premiere.svg",
+  aftereffects: "assets/brands/aftereffects.svg",
+  photoshop: "assets/brands/photoshop.svg",
+  illustrator: "assets/brands/illustrator.svg",
+  adobe: "assets/brands/adobe.svg",
+  lightroom: "assets/brands/lightroom.svg",
+  figma: "assets/brands/figma.svg",
+  framer: "assets/brands/framer.svg",
+  blender: "assets/brands/blender.svg",
+  instagram: "assets/brands/instagram.svg",
+  tiktok: "assets/brands/tiktok.svg",
+  youtube: "assets/brands/youtube.svg",
+  linkedin: "assets/brands/linkedin.svg",
+  notion: "assets/brands/notion.svg",
+  canva: "assets/brands/canva.svg",
+  davinci: "assets/brands/davinci.svg",
+  capcut: "assets/brands/capcut.svg",
+  cinema4d: "assets/brands/cinema4d.svg",
+};
+
+/* Four orbit brands per service — tools people actually recognize */
+const SERVICE_ICONS = {
+  video: ["premiere", "aftereffects", "davinci", "adobe"],
+  graphics: ["photoshop", "illustrator", "figma", "canva"],
+  cinematic: ["premiere", "blender", "cinema4d", "aftereffects"],
+  social: ["instagram", "tiktok", "youtube", "linkedin"],
+  reel: ["capcut", "instagram", "tiktok", "lightroom"],
+  branding: ["figma", "illustrator", "framer", "notion"],
+};
+
+function resolveBrand(key) {
+  const meta = BRAND_META[key];
+  const paths = window.BRAND_ICON_PATHS || {};
+  const pathData = paths[key];
+  const logo = BRAND_LOGOS[key] || null;
+  /* Need either a real logo image or an inline mark to render */
+  if (!meta || (!logo && !pathData)) return null;
+  return {
+    key,
+    label: meta.label,
+    color: meta.color,
+    logo,
+    svg: pathData ? pathData.svg : null,
+  };
+}
 
 const SERVICE_DATA = {
   video: {
@@ -171,10 +179,10 @@ const ORBIT_LAYOUT = {
     radiusYFactor: 0.3,
   },
   mobile: {
-    angles: [168, 215, 325, 372],
-    centerYFactor: 0.3,
-    radiusXFactor: 0.4,
-    radiusYFactor: 0.24,
+    angles: [186, 215, 325, 354],
+    centerYFactor: 0.28,
+    radiusXFactor: 0.45,
+    radiusYFactor: 0.29,
   },
 };
 
@@ -210,20 +218,39 @@ function unbindOrbitResize() {
   }
 }
 
-function getServiceIconPaths(serviceId) {
-  const icons = SERVICE_ICONS[serviceId];
-  if (!icons) return [];
-  return [...icons.left, ...icons.right];
+function getServiceBrandIcons(serviceId) {
+  const keys = SERVICE_ICONS[serviceId];
+  if (!keys) return [];
+  return keys.map(resolveBrand).filter(Boolean);
 }
 
-function buildFloatIconMarkup(paths) {
+function buildVectorMark(brand, hidden) {
+  if (!brand.svg) return "";
+  return `<svg class="service-detail__brand-logo service-detail__brand-logo--vector" viewBox="0 0 24 24" aria-hidden="true" focusable="false"${hidden ? " hidden" : ""}>${brand.svg}</svg>`;
+}
+
+function buildBrandMark(brand) {
+  if (brand.logo) {
+    /* If the CDN image fails, reveal the inline vector fallback beside it */
+    const onError =
+      "this.style.display='none';var v=this.nextElementSibling;if(v){v.hidden=false;}";
+    return (
+      `<img class="service-detail__brand-logo service-detail__brand-logo--img" src="${brand.logo}" alt="${brand.label}" loading="lazy" decoding="async" draggable="false" onerror="${onError}" />` +
+      buildVectorMark(brand, true)
+    );
+  }
+  return buildVectorMark(brand, false);
+}
+
+function buildFloatIconMarkup(brands) {
   const depthClasses = ["service-detail__float-icon--depth-near", "", "service-detail__float-icon--depth-far", ""];
-  return paths
+  return brands
     .map(
-      (pathContent, index) => `
-        <span class="service-detail__float-icon ${depthClasses[index] || ""}" data-float-index="${index}">
-          <span class="service-detail__float-icon-inner">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${pathContent}</svg>
+      (brand, index) => `
+        <span class="service-detail__float-icon ${depthClasses[index] || ""}" data-float-index="${index}" data-brand="${brand.key}">
+          <span class="service-detail__float-icon-inner" style="--brand-color: #${brand.color}" tabindex="0" role="img" aria-label="${brand.label}">
+            ${buildBrandMark(brand)}
+            <span class="service-detail__brand-tip" aria-hidden="true">${brand.label}</span>
           </span>
         </span>`
     )
@@ -233,10 +260,10 @@ function buildFloatIconMarkup(paths) {
 function populateFloatIcons(detail, serviceId) {
   const container = detail.querySelector(".service-detail__float-icons");
   const ring = detail.querySelector(".service-detail__orbit-ring");
-  const paths = getServiceIconPaths(serviceId);
-  if (!container || !paths.length) return;
+  const brands = getServiceBrandIcons(serviceId);
+  if (!container || !brands.length) return;
 
-  container.innerHTML = buildFloatIconMarkup(paths);
+  container.innerHTML = buildFloatIconMarkup(brands);
   if (ring) container.prepend(ring);
 }
 
@@ -248,6 +275,8 @@ function positionOrbitIcons(detail) {
 
   const layout = getOrbitLayout();
   const detailRect = detail.getBoundingClientRect();
+  if (detailRect.width < 2 || detailRect.height < 2) return;
+
   const cx = detailRect.width / 2;
   const cy = detailRect.height * layout.centerYFactor;
   const radiusX = detailRect.width * layout.radiusXFactor;
@@ -264,6 +293,15 @@ function positionOrbitIcons(detail) {
     icon.dataset.orbitX = String(x);
     icon.dataset.orbitY = String(y);
     icon.dataset.orbitAngle = String(angleDeg);
+    gsap.set(icon, { xPercent: -50, yPercent: -50, x: 0, y: 0 });
+
+    /* Keep tooltips on-screen for icons hugging the viewport edges */
+    const EDGE_PX = 84;
+    icon.classList.toggle("service-detail__float-icon--tip-right", x < EDGE_PX);
+    icon.classList.toggle(
+      "service-detail__float-icon--tip-left",
+      detailRect.width - x < EDGE_PX
+    );
   });
 
   if (ring) {
@@ -344,8 +382,8 @@ function startIconParallax(detail, floatIcons) {
   if (window.matchMedia("(max-width: 900px)").matches) return;
 
   iconParallaxQuickTo = Array.from(floatIcons).map((icon) => ({
-    x: gsap.quickTo(icon, "x", { duration: 0.6, ease: "power2.out" }),
-    y: gsap.quickTo(icon, "y", { duration: 0.6, ease: "power2.out" }),
+    x: gsap.quickTo(icon, "x", { duration: 0.7, ease: window.Motion ? Motion.ease() : "power2.out" }),
+    y: gsap.quickTo(icon, "y", { duration: 0.7, ease: window.Motion ? Motion.ease() : "power2.out" }),
   }));
 
   iconParallaxHandler = (event) => {
@@ -492,6 +530,9 @@ function openServiceDetail(serviceId, sourceCard) {
   detail.hidden = false;
   detail.removeAttribute("hidden");
   detail.setAttribute("aria-hidden", "false");
+
+  /* Force layout so orbit positions use real size (not 0×0 while hidden) */
+  gsap.set(detail, { autoAlpha: 1, opacity: 1, visibility: "visible" });
   positionOrbitIcons(detail);
   bindOrbitResize(detail);
 
@@ -512,14 +553,22 @@ function openServiceDetail(serviceId, sourceCard) {
     gsap.set(backBtn, { autoAlpha: 1, x: 0 });
     gsap.set(headerBox, { autoAlpha: 1, y: 0, scale: 1 });
     gsap.set(orbitRing, { autoAlpha: 0.35, strokeDashoffset: 0 });
-    gsap.set(floatIcons, { autoAlpha: 0.85, scale: 1, x: 0, y: 0, rotation: 0 });
+    gsap.set(floatIcons, {
+      autoAlpha: 0.94,
+      scale: 1,
+      xPercent: -50,
+      yPercent: -50,
+      x: 0,
+      y: 0,
+      rotation: 0,
+    });
+    gsap.set(floatIconInners, { scale: 1, x: 0, y: 0, rotation: 0 });
     gsap.set(threadPaths, { autoAlpha: 1, strokeDashoffset: 0 });
     gsap.set(threads, { autoAlpha: 1, scale: 1 });
     backBtn?.focus();
     return;
   }
 
-  gsap.set(detail, { autoAlpha: 0 });
   gsap.set(backBtn, { autoAlpha: 0, x: -10 });
   gsap.set(headerBox, { autoAlpha: 0, y: 14, scale: 0.96 });
   gsap.set(orbitRing, { autoAlpha: 0, strokeDashoffset: 160 });
@@ -529,6 +578,8 @@ function openServiceDetail(serviceId, sourceCard) {
     gsap.set(icon, {
       autoAlpha: 0,
       scale: 0.28,
+      xPercent: -50,
+      yPercent: -50,
       x: orbitOrigin.x - targetX,
       y: orbitOrigin.y - targetY,
       rotation: 0,
@@ -539,9 +590,16 @@ function openServiceDetail(serviceId, sourceCard) {
   gsap.set(threadPaths, { autoAlpha: 0, strokeDashoffset: 120 });
   gsap.set(threads, { autoAlpha: 0, scale: 0.88 });
 
+  /* Brief hide for entrance — keep layout (visibility) so positions stay valid */
+  gsap.set(detail, { opacity: 0 });
+
   serviceDetailTween = gsap.timeline({
-    defaults: { ease: "power2.out" },
+    defaults: { ease: window.Motion ? Motion.ease() : "power2.out" },
     onComplete: () => {
+      positionOrbitIcons(detail);
+      floatIcons.forEach((icon) => {
+        gsap.set(icon, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 1, autoAlpha: 0.94 });
+      });
       startThreadFloatAnimations(threads);
       startFloatIconAnimations(floatIcons);
       startIconParallax(detail, floatIcons);
@@ -549,32 +607,43 @@ function openServiceDetail(serviceId, sourceCard) {
     },
   });
 
-  serviceDetailTween.to(items, { autoAlpha: 0, duration: 0.28, stagger: 0.02 }, 0);
-  serviceDetailTween.to(chrome, { autoAlpha: 0, duration: 0.22 }, 0);
-  serviceDetailTween.to(detail, { autoAlpha: 1, duration: 0.32 }, 0.12);
-  serviceDetailTween.to(backBtn, { autoAlpha: 1, x: 0, duration: 0.3 }, 0.16);
-  serviceDetailTween.to(headerBox, { autoAlpha: 1, y: 0, scale: 1, duration: 0.34 }, 0.2);
+  serviceDetailTween.to(items, { autoAlpha: 0, duration: 0.35, stagger: 0.03 }, 0);
+  serviceDetailTween.to(chrome, { autoAlpha: 0, duration: 0.3 }, 0);
+  serviceDetailTween.to(detail, { opacity: 1, duration: 0.45 }, 0.12);
+  serviceDetailTween.to(backBtn, { autoAlpha: 1, x: 0, duration: 0.4 }, 0.16);
+  serviceDetailTween.to(headerBox, { autoAlpha: 1, y: 0, scale: 1, duration: 0.55 }, 0.2);
   serviceDetailTween.to(
     orbitRing,
-    { autoAlpha: 0.42, strokeDashoffset: 0, duration: 0.6, ease: "power1.out" },
+    { autoAlpha: 0.42, strokeDashoffset: 0, duration: 0.75, ease: window.Motion ? Motion.ease() : "power1.out" },
     0.22
   );
   serviceDetailTween.to(
     floatIcons,
-    { autoAlpha: 0.94, scale: 1, x: 0, y: 0, rotation: 0, duration: 0.62, stagger: 0.11, ease: "back.out(2)" },
+    {
+      autoAlpha: 0.94,
+      scale: 1,
+      x: 0,
+      y: 0,
+      xPercent: -50,
+      yPercent: -50,
+      rotation: 0,
+      duration: 0.7,
+      stagger: 0.11,
+      ease: window.Motion ? Motion.springSnap() : "back.out(1.7)",
+    },
     0.26
   );
   serviceDetailTween.to(
     floatIconInners,
-    { scale: 1, duration: 0.48, stagger: 0.11, ease: "back.out(1.8)" },
+    { scale: 1, duration: 0.55, stagger: 0.11, ease: window.Motion ? Motion.springUi() : "back.out(1.2)" },
     0.3
   );
   serviceDetailTween.to(
     threadPaths,
-    { autoAlpha: 1, strokeDashoffset: 0, duration: 0.55, stagger: 0.07, ease: "power1.out" },
+    { autoAlpha: 1, strokeDashoffset: 0, duration: 0.65, stagger: 0.07, ease: window.Motion ? Motion.ease() : "power1.out" },
     0.3
   );
-  serviceDetailTween.to(threads, { autoAlpha: 1, scale: 1, duration: 0.38, stagger: 0.07 }, 0.38);
+  serviceDetailTween.to(threads, { autoAlpha: 1, scale: 1, duration: 0.5, stagger: 0.07 }, 0.38);
 }
 
 function closeServiceDetail() {
@@ -620,13 +689,13 @@ function closeServiceDetail() {
   if (typeof refreshCarouselPosition === "function") refreshCarouselPosition();
 
   serviceDetailTween = gsap.timeline({
-    defaults: { ease: "power2.out" },
+    defaults: { ease: window.Motion ? Motion.ease() : "power2.out" },
     onComplete: finish,
   });
 
-  serviceDetailTween.to(detail, { autoAlpha: 0, duration: 0.16 }, 0);
-  serviceDetailTween.to(chrome, { autoAlpha: 1, duration: 0.2 }, 0.03);
-  serviceDetailTween.call(finish, null, 0.22);
+  serviceDetailTween.to(detail, { autoAlpha: 0, duration: 0.28 }, 0);
+  serviceDetailTween.to(chrome, { autoAlpha: 1, duration: 0.35 }, 0.05);
+  serviceDetailTween.call(finish, null, 0.35);
 }
 
 function getServiceIdFromItem(item) {
@@ -667,7 +736,7 @@ function initServiceScreen() {
     );
 
     card.addEventListener("click", (e) => {
-      if (mobileNavigating) return;
+      if (typeof cardNavigating !== "undefined" && cardNavigating) return;
       e.preventDefault();
       handleCardActivate(item);
     });

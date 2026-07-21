@@ -1,5 +1,7 @@
 gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, ScrollToPlugin);
 
+if (window.Motion) Motion.registerEases();
+
 const items = gsap.utils.toArray(".carousel-item");
 const total = items.length;
 const stage = document.querySelector(".carousel-stage");
@@ -52,8 +54,8 @@ let carouselTrigger = null;
 let matchMediaInstance = null;
 let lastCenterIndex = -1;
 let cachedStageMetrics = null;
-let mobileStep = 0;
-let mobileNavigating = false;
+let cardStep = 0;
+let cardNavigating = false;
 let serviceViewScrollLocked = false;
 let lockedScrollY = 0;
 
@@ -66,12 +68,14 @@ function lockServiceViewScroll() {
   serviceViewScrollLocked = true;
   lockedScrollY = window.scrollY;
   document.body.classList.add("is-service-view-locked");
+  if (window.Motion) Motion.stop();
 }
 
 function unlockServiceViewScroll() {
   if (!serviceViewScrollLocked) return;
   serviceViewScrollLocked = false;
   document.body.classList.remove("is-service-view-locked");
+  if (window.Motion) Motion.start();
 }
 
 function onServiceViewScrollBlock(e) {
@@ -82,7 +86,8 @@ function onServiceViewScrollBlock(e) {
 function onServiceViewScrollRestore() {
   if (!serviceViewScrollLocked) return;
   if (Math.abs(window.scrollY - lockedScrollY) > 1) {
-    window.scrollTo(0, lockedScrollY);
+    if (window.Motion) Motion.scrollTo(lockedScrollY, { immediate: true });
+    else window.scrollTo(0, lockedScrollY);
   }
 }
 let mobileNavCleanup = null;
@@ -90,6 +95,9 @@ let glowHueProxy = { value: 280 };
 let glowHueTween = null;
 let desktopRevealPlayed = false;
 let heroIntroPlayed = false;
+let activationTimer = 0;
+let pendingActivation = null;
+let scrollingIdleTimer = 0;
 const progressDots = gsap.utils.toArray(".carousel-progress__dot");
 
 function getMobileScrollPerCard() {
@@ -190,84 +198,89 @@ function getWrappedCardIndex(step) {
   return ((step % total) + total) % total;
 }
 
-function getMobileScrollY(step) {
+function getCardScrollY(step) {
   const wrapped = getWrappedCardIndex(step);
   return carouselTrigger.start + wrapped * config.scrollPerCard;
 }
 
-function canNavigateMobile() {
-  if (!carouselTrigger || mobileNavigating) return false;
+function canNavigateCarousel() {
+  if (!carouselTrigger || cardNavigating) return false;
   if (document.querySelector(".carousel-stage.is-service-view")) return false;
   const y = window.scrollY;
   return y >= carouselTrigger.start - 4 && y <= carouselTrigger.end + 4;
 }
 
-function goToMobileStep(step, duration = 0.22) {
-  if (!carouselTrigger || mobileNavigating || isServiceViewActive()) return;
+function goToCardStep(step, duration = 0.45) {
+  if (!carouselTrigger || cardNavigating || isServiceViewActive()) return;
 
-  const prevStep = mobileStep;
-  mobileStep = step;
-  if (mobileStep === prevStep) return;
+  const prevStep = cardStep;
+  cardStep = step;
+  if (cardStep === prevStep) return;
 
-  mobileNavigating = true;
-  gsap.killTweensOf(mobileOffsetProxy);
+  cardNavigating = true;
+  gsap.killTweensOf(cardOffsetProxy);
 
   const fromOffset = prevStep * SPACING;
-  const toOffset = mobileStep * SPACING;
-  mobileOffsetProxy.offset = fromOffset;
+  const toOffset = cardStep * SPACING;
+  cardOffsetProxy.offset = fromOffset;
 
-  gsap.to(mobileOffsetProxy, {
+  gsap.to(cardOffsetProxy, {
     offset: toOffset,
     duration,
-    ease: "power2.out",
-    onUpdate: () => positionAll(mobileOffsetProxy.offset),
+    ease: window.Motion ? Motion.ease() : "power2.out",
+    onUpdate: () => {
+      markCarouselScrolling();
+      positionAll(cardOffsetProxy.offset);
+    },
     onComplete: () => {
-      mobileNavigating = false;
-      positionAll(mobileStep * SPACING);
-      window.scrollTo(0, getMobileScrollY(mobileStep));
+      cardNavigating = false;
+      positionAll(cardStep * SPACING);
+      const y = getCardScrollY(cardStep);
+      if (window.Motion) Motion.scrollTo(y, { immediate: true });
+      else window.scrollTo(0, y);
+      document.body.classList.remove("is-carousel-scrolling");
+      flushPendingActivation();
     },
   });
 }
 
-const mobileOffsetProxy = { offset: 0 };
+const cardOffsetProxy = { offset: 0 };
 
-function destroyMobileCardNav() {
+function destroyCardStepNav() {
   if (mobileNavCleanup) {
     mobileNavCleanup();
     mobileNavCleanup = null;
   }
 }
 
-function initMobileCardNav() {
-  destroyMobileCardNav();
-
-  if (!isMobileCarousel()) return;
+function initCardStepNav() {
+  destroyCardStepNav();
 
   const heroPin = document.querySelector(".hero-pin");
   if (!heroPin) return;
 
+  const mobile = isMobileCarousel();
   let touchStartX = 0;
   let touchStartY = 0;
   let touchActive = false;
-
   const SWIPE_THRESHOLD = 40;
 
-  const canNavigate = () => canNavigateMobile();
+  const canNavigate = () => canNavigateCarousel();
 
   const onTouchStart = (e) => {
-    if (!canNavigate()) return;
+    if (!mobile || !canNavigate()) return;
     touchActive = true;
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
   };
 
   const onTouchMove = (e) => {
-    if (!canNavigateMobile()) return;
+    if (!mobile || !canNavigateCarousel()) return;
     e.preventDefault();
   };
 
   const onTouchEnd = (e) => {
-    if (!touchActive || !canNavigate()) {
+    if (!mobile || !touchActive || !canNavigate()) {
       touchActive = false;
       return;
     }
@@ -285,26 +298,31 @@ function initMobileCardNav() {
       ? (dx > 0 ? 1 : -1)
       : (dy > 0 ? 1 : -1);
 
-    goToMobileStep(mobileStep + direction);
+    goToCardStep(cardStep + direction);
   };
 
   const onWheel = (e) => {
     if (!canNavigate()) return;
     e.preventDefault();
-    if (Math.abs(e.deltaY) < 8) return;
-    const direction = e.deltaY > 0 ? 1 : -1;
-    goToMobileStep(mobileStep + direction);
+    if (Math.abs(e.deltaY) < 8 && Math.abs(e.deltaX) < 8) return;
+    const dominant = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const direction = dominant > 0 ? 1 : -1;
+    goToCardStep(cardStep + direction);
   };
 
-  heroPin.addEventListener("touchstart", onTouchStart, { passive: true });
-  heroPin.addEventListener("touchmove", onTouchMove, { passive: false });
-  heroPin.addEventListener("touchend", onTouchEnd, { passive: true });
+  if (mobile) {
+    heroPin.addEventListener("touchstart", onTouchStart, { passive: true });
+    heroPin.addEventListener("touchmove", onTouchMove, { passive: false });
+    heroPin.addEventListener("touchend", onTouchEnd, { passive: true });
+  }
   window.addEventListener("wheel", onWheel, { passive: false });
 
   mobileNavCleanup = () => {
-    heroPin.removeEventListener("touchstart", onTouchStart);
-    heroPin.removeEventListener("touchmove", onTouchMove);
-    heroPin.removeEventListener("touchend", onTouchEnd);
+    if (mobile) {
+      heroPin.removeEventListener("touchstart", onTouchStart);
+      heroPin.removeEventListener("touchmove", onTouchMove);
+      heroPin.removeEventListener("touchend", onTouchEnd);
+    }
     window.removeEventListener("wheel", onWheel);
   };
 }
@@ -313,14 +331,15 @@ function placeItem(item, t, rel, metrics) {
   const mobileFocus = !!config.glowOnlyRel;
   const { scaleX, scaleY, stageH, cardW, cardH } = metrics;
 
-  if (Math.abs(rel) > config.maxVisibleRel) {
-    gsap.set(item, { autoAlpha: 0, force3D: true });
-    setItemFocusState(item, "none");
-    return;
-  }
-
-  if (t < -0.05 || t > 1.05) {
-    gsap.set(item, { autoAlpha: 0, force3D: true });
+  if (Math.abs(rel) > config.maxVisibleRel || t < -0.05 || t > 1.05) {
+    item.style.opacity = "0";
+    item.style.visibility = "hidden";
+    item.style.pointerEvents = "none";
+    item.style.zIndex = "0";
+    /* Keep off-stage so intro/reveal never paints a card at (0,0) */
+    item.style.transformOrigin = "50% 100%";
+    item.style.transform = "translate3d(-9999px, -9999px, 0) scale(0.5)";
+    item._carouselPose = { x: -9999, y: -9999, opacity: 0, scale: 0.5, rotation: 0, hidden: true };
     setItemFocusState(item, "none");
     return;
   }
@@ -359,16 +378,18 @@ function placeItem(item, t, rel, metrics) {
     ? (stageH + cardH * scale) / 2 - cardH
     : point.y * scaleY;
 
-  gsap.set(item, {
-    x: Math.round(point.x * scaleX - cardW / 2 + xOffset),
-    y: Math.round(yPos),
-    rotation: mobileFocus ? 0 : Math.round(rotation * 10) / 10,
-    transformOrigin: "50% 100%",
-    scale,
-    autoAlpha: isHeroIntroPending() ? 0 : opacity,
-    zIndex: rel === 0 ? 3 : 1,
-    force3D: rel !== 0,
-  });
+  const x = Math.round(point.x * scaleX - cardW / 2 + xOffset);
+  const y = Math.round(yPos);
+  const rot = mobileFocus ? 0 : Math.round(rotation * 10) / 10;
+  const visibleOpacity = isHeroIntroPending() ? 0 : opacity;
+
+  item.style.visibility = "visible";
+  item.style.pointerEvents = rel === 0 ? "auto" : "none";
+  item.style.zIndex = rel === 0 ? "3" : "1";
+  item.style.opacity = String(visibleOpacity);
+  item.style.transformOrigin = "50% 100%";
+  item.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rot}deg) scale(${scale})`;
+  item._carouselPose = { x, y, opacity: visibleOpacity, scale, rotation: rot, hidden: false };
 }
 
 function triggerHueSweep(index) {
@@ -388,14 +409,16 @@ function updateGlowHue(index) {
   if (glowHueTween) glowHueTween.kill();
   glowHueTween = gsap.to(glowHueProxy, {
     value: hue,
-    duration: 0.7,
-    ease: "power2.out",
+    duration: 0.45,
+    ease: "none",
     onUpdate: () => {
       document.documentElement.style.setProperty("--glow-hue", glowHueProxy.value);
     },
   });
 
-  triggerHueSweep(index);
+  if (!document.body.classList.contains("is-carousel-scrolling")) {
+    triggerHueSweep(index);
+  }
 }
 
 function updateProgressDots(index) {
@@ -410,26 +433,23 @@ function navigateToCard(index) {
   if (!carouselTrigger || index < 0 || index >= total) return;
   if (document.querySelector(".carousel-stage.is-service-view")) return;
 
-  if (isMobileCarousel()) {
-    const current = lastCenterIndex >= 0 ? lastCenterIndex : 0;
-    let delta = index - current;
-    if (delta > total / 2) delta -= total;
-    if (delta < -total / 2) delta += total;
-    goToMobileStep(mobileStep + delta);
-    return;
-  }
+  const current = lastCenterIndex >= 0 ? lastCenterIndex : getWrappedCardIndex(cardStep);
+  let delta = index - current;
+  if (delta > total / 2) delta -= total;
+  if (delta < -total / 2) delta += total;
+  if (delta === 0) return;
 
-  const target = carouselTrigger.start + index * config.scrollPerCard;
   if (prefersReducedMotion()) {
-    window.scrollTo(0, target);
+    cardStep += delta;
+    positionAll(cardStep * SPACING);
+    const y = getCardScrollY(cardStep);
+    if (window.Motion) Motion.scrollTo(y, { immediate: true });
+    else window.scrollTo(0, y);
+    flushPendingActivation();
     return;
   }
 
-  gsap.to(window, {
-    scrollTo: target,
-    duration: 0.65,
-    ease: "power2.inOut",
-  });
+  goToCardStep(cardStep + delta, isMobileCarousel() ? 0.45 : 0.55);
 }
 
 function initProgressNav() {
@@ -444,14 +464,10 @@ function initProgressNav() {
 function initKeyboardNav() {
   window.addEventListener("keydown", (e) => {
     if (document.querySelector(".carousel-stage.is-service-view")) return;
-    if (isMobileCarousel()) {
-      if (!canNavigateMobile()) return;
-    } else if (!carouselTrigger?.isActive) {
-      return;
-    }
+    if (!canNavigateCarousel()) return;
     if (e.target.closest("input, textarea, select, a[href^='mailto']")) return;
 
-    const current = lastCenterIndex >= 0 ? lastCenterIndex : 0;
+    const current = lastCenterIndex >= 0 ? lastCenterIndex : getWrappedCardIndex(cardStep);
     let next = current;
 
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
@@ -477,6 +493,37 @@ function updateArcLight(t) {
   arcLight.setAttribute("r", r);
 }
 
+function markCarouselScrolling() {
+  document.body.classList.add("is-carousel-scrolling");
+  window.clearTimeout(scrollingIdleTimer);
+  scrollingIdleTimer = window.setTimeout(() => {
+    document.body.classList.remove("is-carousel-scrolling");
+    flushPendingActivation();
+  }, 120);
+}
+
+function flushPendingActivation() {
+  if (!pendingActivation) return;
+  const { index, prevActive } = pendingActivation;
+  pendingActivation = null;
+  if (typeof animateCardActivation === "function") {
+    animateCardActivation(index, prevActive);
+  }
+}
+
+function updateActiveState(index) {
+  const prevActive = items.findIndex((item) => item.classList.contains("is-active"));
+  items.forEach((item, i) => {
+    item.classList.toggle("is-active", i === index);
+  });
+  if (prevActive === index) return;
+
+  /* Defer folder open/close until scroll settles — avoids jank mid-scrub */
+  pendingActivation = { index, prevActive };
+  window.clearTimeout(activationTimer);
+  activationTimer = window.setTimeout(flushPendingActivation, 90);
+}
+
 function positionAll(offset) {
   if (isServiceViewActive()) return;
 
@@ -487,10 +534,10 @@ function positionAll(offset) {
   const metrics = getStageMetrics();
   const mobile = !!config.glowOnlyRel;
 
-  items.forEach((item, i) => {
+  for (let i = 0; i < items.length; i++) {
     const rel = getRelativeIndex(i, centerIndex, total);
-    placeItem(item, wrapPathT(centerT + rel * SPACING), rel, metrics);
-  });
+    placeItem(items[i], wrapPathT(centerT + rel * SPACING), rel, metrics);
+  }
 
   if (centerIndex !== lastCenterIndex) {
     updateActiveState(centerIndex);
@@ -504,14 +551,6 @@ function positionAll(offset) {
   }
 
   stage?.classList.add("is-ready");
-}
-
-function updateActiveState(index) {
-  const prevActive = items.findIndex((item) => item.classList.contains("is-active"));
-  items.forEach((item, i) => {
-    item.classList.toggle("is-active", i === index);
-  });
-  if (prevActive !== index) animateCardActivation(index, prevActive);
 }
 
 function getOffsetFromScroll(scrollPos, start) {
@@ -560,9 +599,9 @@ function prepHeroIntro() {
 function revealCarouselChrome() {
   gsap.to(".carousel-progress, .carousel-scroll-hint", {
     autoAlpha: 1,
-    duration: 0.45,
+    duration: window.Motion ? Motion.UI_DURATION : 0.45,
     stagger: 0.08,
-    ease: "power2.out",
+    ease: window.Motion ? Motion.ease() : "power2.out",
   });
 }
 
@@ -584,10 +623,13 @@ function playMobileCarouselIntro() {
 
   const itemStates = items.map((item) => ({
     item,
-    opacity: gsap.getProperty(item, "opacity"),
+    opacity: item._carouselPose?.opacity ?? 1,
   }));
 
-  itemStates.forEach(({ item }) => gsap.set(item, { autoAlpha: 0 }));
+  itemStates.forEach(({ item }) => {
+    item.style.opacity = "0";
+    item.style.visibility = "hidden";
+  });
 
   const tl = gsap.timeline();
 
@@ -595,16 +637,23 @@ function playMobileCarouselIntro() {
     strokeDashoffset: 0,
     duration: 1.2,
     stagger: 0.08,
-    ease: "power2.inOut",
+    ease: window.Motion ? Motion.easeInOut() : "power2.inOut",
   });
 
   itemStates.forEach(({ item, opacity }, index) => {
+    const state = { o: 0 };
     tl.to(
-      item,
+      state,
       {
-        autoAlpha: opacity,
-        duration: 0.5,
-        ease: "power3.out",
+        o: opacity,
+        duration: 0.65,
+        ease: window.Motion ? Motion.ease() : "power3.out",
+        onStart: () => {
+          item.style.visibility = "visible";
+        },
+        onUpdate: () => {
+          item.style.opacity = String(state.o);
+        },
       },
       0.35 + index * 0.06
     );
@@ -652,9 +701,9 @@ function initHeroIntro() {
     autoAlpha: 1,
     y: 0,
     filter: "blur(0px)",
-    duration: 0.82,
+    duration: window.Motion ? Motion.REVEAL_DURATION : 0.82,
     stagger: 0.1,
-    ease: "power3.out",
+    ease: window.Motion ? Motion.ease() : "power3.out",
   }, 0.25);
 
   if (cta) {
@@ -665,7 +714,7 @@ function initHeroIntro() {
         y: 0,
         filter: "blur(0px)",
         duration: 0.72,
-        ease: "power3.out",
+        ease: window.Motion ? Motion.ease() : "power3.out",
       },
       "-=0.28"
     );
@@ -706,15 +755,34 @@ function initDesktopReveal() {
   refreshCarouselPosition();
 
   const orderedItems = items
-    .map((item) => ({
-      item,
-      x: gsap.getProperty(item, "x"),
-      opacity: gsap.getProperty(item, "opacity"),
-    }))
+    .map((item) => {
+      const pose = item._carouselPose;
+      if (!pose || pose.hidden || pose.opacity <= 0) return null;
+      return {
+        item,
+        x: pose.x,
+        y: pose.y,
+        opacity: pose.opacity,
+        scale: pose.scale,
+        rotation: pose.rotation,
+      };
+    })
+    .filter(Boolean)
     .sort((a, b) => a.x - b.x);
 
-  orderedItems.forEach(({ item, x }) => {
-    gsap.set(item, { x: x - 76, autoAlpha: 0 });
+  /* Ensure off-arc cards stay fully hidden during reveal */
+  items.forEach((item) => {
+    if (item._carouselPose?.hidden) {
+      item.style.opacity = "0";
+      item.style.visibility = "hidden";
+      item.style.transform = "translate3d(-9999px, -9999px, 0) scale(0.5)";
+    }
+  });
+
+  orderedItems.forEach(({ item, x, y, scale, rotation }) => {
+    item.style.opacity = "0";
+    item.style.visibility = "hidden";
+    item.style.transform = `translate3d(${x - 76}px, ${y}px, 0) rotate(${rotation}deg) scale(${scale})`;
   });
 
   stage?.classList.remove("is-desktop-reveal-pending");
@@ -725,30 +793,38 @@ function initDesktopReveal() {
 
   tl.to(
     outer,
-    { strokeDashoffset: 0, duration: 1.05, ease: "power2.inOut" },
+    { strokeDashoffset: 0, duration: 1.05, ease: window.Motion ? Motion.easeInOut() : "power2.inOut" },
     0
   );
   tl.to(
     inner,
-    { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut" },
+    { strokeDashoffset: 0, duration: 0.9, ease: window.Motion ? Motion.easeInOut() : "power2.inOut" },
     0.1
   );
 
-  orderedItems.forEach(({ item, x, opacity }, index) => {
+  orderedItems.forEach(({ item, x, y, opacity, scale, rotation }, index) => {
+    const state = { x: x - 76, o: 0 };
     tl.to(
-      item,
+      state,
       {
         x,
-        autoAlpha: opacity,
-        duration: 0.52,
-        ease: "power3.out",
+        o: opacity,
+        duration: 0.65,
+        ease: window.Motion ? Motion.ease() : "power3.out",
+        onStart: () => {
+          item.style.visibility = "visible";
+        },
+        onUpdate: () => {
+          item.style.opacity = String(state.o);
+          item.style.transform = `translate3d(${state.x}px, ${y}px, 0) rotate(${rotation}deg) scale(${scale})`;
+        },
       },
       0.16 + index * 0.1
     );
   });
 
   if (arcLight) {
-    tl.to(arcLight, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.5);
+    tl.to(arcLight, { autoAlpha: 1, duration: 0.45, ease: window.Motion ? Motion.ease() : "power2.out" }, 0.5);
   }
 }
 
@@ -758,7 +834,7 @@ function initCarousel() {
     carouselTrigger = null;
   }
 
-  destroyMobileCardNav();
+  destroyCardStepNav();
 
   config = getActiveConfig();
   const mobile = isMobileCarousel();
@@ -769,8 +845,9 @@ function initCarousel() {
 
   invalidateStageMetrics();
   lastCenterIndex = -1;
-  mobileStep = 0;
-  mobileNavigating = false;
+  cardStep = 0;
+  cardNavigating = false;
+  cardOffsetProxy.offset = 0;
   stage?.classList.toggle("carousel-stage--mobile-focus", mobile);
   document.body.classList.toggle("is-mobile-perf", mobile);
 
@@ -779,57 +856,26 @@ function initCarousel() {
     return;
   }
 
-  const scrollDistance = mobile
-    ? config.scrollPerCard * (total + 4)
-    : window.innerHeight * 50;
-  const stepsInScroll = scrollDistance / config.scrollPerCard;
-
-  if (mobile) {
-    mobileOffsetProxy.offset = 0;
-
-    carouselTrigger = ScrollTrigger.create({
-      trigger: ".hero",
-      start: "top top",
-      end: `+=${scrollDistance}`,
-      pin: ".hero-pin",
-      anticipatePin: 1,
-      invalidateOnRefresh: true,
-      onRefresh: () => {
-        invalidateStageMetrics();
-        config.scrollPerCard = getMobileScrollPerCard();
-      },
-    });
-
-    initMobileCardNav();
-    positionAll(0);
-    return;
-  }
+  /* Step-based on desktop + mobile: one card always centered, no free-scrub snap */
+  const scrollDistance = config.scrollPerCard * (total + 4);
 
   carouselTrigger = ScrollTrigger.create({
     trigger: ".hero",
     start: "top top",
     end: `+=${scrollDistance}`,
     pin: ".hero-pin",
-    scrub: true,
     anticipatePin: 1,
     invalidateOnRefresh: true,
-    snap: {
-      snapTo: (progress) => Math.round(progress * stepsInScroll) / stepsInScroll,
-      duration: { min: 0.08, max: 0.2 },
-      delay: 0,
-      ease: "power1.out",
-    },
-    onUpdate: (self) => {
-      if (isServiceViewActive()) return;
-      positionAll(getOffsetFromScroll(self.scroll(), self.start));
+    onRefresh: () => {
+      invalidateStageMetrics();
+      if (isMobileCarousel()) {
+        config.scrollPerCard = getMobileScrollPerCard();
+      }
     },
   });
 
-  positionAll(
-    carouselTrigger
-      ? getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start)
-      : 0
-  );
+  initCardStepNav();
+  positionAll(0);
 
   if (!mobile) prepDesktopReveal();
 }
@@ -855,13 +901,11 @@ function initResponsive() {
 
 function refreshCarouselPosition() {
   if (!carouselTrigger) return;
-  const offset = isMobileCarousel()
-    ? mobileStep * SPACING
-    : getOffsetFromScroll(carouselTrigger.scroll(), carouselTrigger.start);
-  positionAll(offset);
+  positionAll(cardStep * SPACING);
 }
 
 window.addEventListener("load", () => {
+  if (window.Motion) Motion.init();
   prepHeroIntro();
   initResponsive();
   initHeroIntro();
