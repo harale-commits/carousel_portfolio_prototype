@@ -928,6 +928,11 @@ body.is-service-view-locked {
   overflow: visible;
 }
 
+/* Keep vector fallback truly hidden until <img> onerror reveals it */
+.service-detail__brand-logo[hidden] {
+  display: none !important;
+}
+
 /* Real image logos keep their own colors */
 .service-detail__brand-logo--img {
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.28));
@@ -1449,6 +1454,34 @@ body.is-mobile-perf .carousel-item {
 
 body.is-mobile-perf #arc-light {
   display: none;
+}
+
+/* Brand orbit tiles: backdrop-filter + glow shadows tank FPS while they scale in */
+body.is-mobile-perf .service-detail__float-icon-inner {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(16, 16, 26, 0.94);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.42),
+    0 0 12px color-mix(in srgb, var(--brand-color, hsl(var(--service-hue), 52%, 50%)) 18%, transparent);
+  transition: none;
+}
+
+body.is-mobile-perf .service-detail__float-icon--depth-near .service-detail__float-icon-inner,
+body.is-mobile-perf .service-detail__float-icon--depth-far .service-detail__float-icon-inner {
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.42),
+    0 0 12px color-mix(in srgb, var(--brand-color, hsl(var(--service-hue), 52%, 50%)) 18%, transparent);
+}
+
+body.is-mobile-perf .service-detail__brand-logo--img {
+  filter: none;
+}
+
+body.is-mobile-perf .service-thread__label,
+body.is-mobile-perf .service-detail__header-box {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 @media (max-width: 480px) {

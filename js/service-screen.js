@@ -231,11 +231,11 @@ function buildVectorMark(brand, hidden) {
 
 function buildBrandMark(brand) {
   if (brand.logo) {
-    /* If the CDN image fails, reveal the inline vector fallback beside it */
+    /* Image only — vector fallback stays hidden until img onerror */
     const onError =
-      "this.style.display='none';var v=this.nextElementSibling;if(v){v.hidden=false;}";
+      "this.style.display='none';var v=this.nextElementSibling;if(v){v.removeAttribute('hidden');}";
     return (
-      `<img class="service-detail__brand-logo service-detail__brand-logo--img" src="${brand.logo}" alt="${brand.label}" loading="lazy" decoding="async" draggable="false" onerror="${onError}" />` +
+      `<img class="service-detail__brand-logo service-detail__brand-logo--img" src="${brand.logo}" alt="" loading="eager" decoding="async" draggable="false" onerror="${onError}" />` +
       buildVectorMark(brand, true)
     );
   }
@@ -435,6 +435,7 @@ function buildThreadPaths(detail, count) {
 
 function startThreadFloatAnimations(threads) {
   killThreadAnimations();
+  if (isMobilePerf() || prefersReducedMotion()) return;
 
   threads.forEach((thread, index) => {
     const label = thread.querySelector(".service-thread__label");
@@ -513,8 +514,12 @@ function resetAllFolderCards() {
   );
 }
 
+function isMobilePerf() {
+  return document.body.classList.contains("is-mobile-perf");
+}
+
 function canSoftBlur() {
-  return !document.body.classList.contains("is-mobile-perf") && !prefersReducedMotion();
+  return !isMobilePerf() && !prefersReducedMotion();
 }
 
 function populateServiceDetail(serviceId) {
@@ -634,9 +639,10 @@ function openServiceDetail(serviceId, sourceCard) {
       x: orbitOrigin.x - targetX,
       y: orbitOrigin.y - targetY,
       rotation: 0,
+      force3D: true,
     });
     const inner = icon.querySelector(".service-detail__float-icon-inner");
-    if (inner) gsap.set(inner, { x: 0, y: 0, rotation: 0, scale: 0.75 });
+    if (inner) gsap.set(inner, { x: 0, y: 0, rotation: 0, scale: 0.75, force3D: true });
   });
   gsap.set(threadPaths, { autoAlpha: 0, strokeDashoffset: 120 });
   gsap.set(threads, { autoAlpha: 0, scale: 0.94 });
@@ -714,6 +720,7 @@ function openServiceDetail(serviceId, sourceCard) {
       duration: 0.55,
       stagger: 0.07,
       ease: window.Motion ? Motion.springSnap() : "back.out(1.5)",
+      force3D: true,
     },
     iconsAt + 0.04
   );
@@ -827,6 +834,7 @@ function closeServiceDetail() {
       y: (i, el) => orbitOrigin.y - parseFloat(el.dataset.orbitY || "0"),
       duration: 0.28,
       stagger: 0.03,
+      force3D: true,
     },
     0
   );

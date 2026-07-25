@@ -1,6 +1,6 @@
 # Deploy to Cloudflare
 
-This is a **static site** (HTML, CSS, JS + GSAP CDN). It deploys as a **Worker with static assets** from `dist/`.
+This is a **static site** (HTML, CSS, JS — all assets self-hosted). It deploys as a **Worker with static assets** from `dist/`.
 
 ## What gets published
 
@@ -9,6 +9,9 @@ The `npm run build` script copies only production files into `dist/`:
 - `index.html`
 - `css/`
 - `js/`
+- `vendor/` (GSAP, Lenis)
+- `fonts/` (Google Sans Flex)
+- `assets/` (brand logos)
 - `_headers` (cache + security headers)
 
 Tests, Playwright, and dev config stay out of the deploy bundle.
@@ -83,6 +86,6 @@ After switching to Workers Assets, the first successful `wrangler deploy` create
 
 ## Environment notes
 
-- **GSAP** loads from jsDelivr CDN (no bundler needed).
-- **Fonts** load from Google Fonts CDN.
+- **GSAP**, **Lenis**, and **fonts** are vendored under `vendor/` and `fonts/` (no runtime CDNs).
+- Refresh vendored files with `npm run vendor` when bumping versions.
 - No secrets or `.env` required for this project.

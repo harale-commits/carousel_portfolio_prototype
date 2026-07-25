@@ -2,6 +2,7 @@
   "name": "carousel-portfolio",
   "private": true,
   "scripts": {
+    "vendor": "bash scripts/vendor.sh",
     "build": "bash scripts/build.sh",
     "serve": "npm run build && npx --yes serve dist -l 8080",
     "preview": "npm run build && npx --yes serve dist -l 8080",
