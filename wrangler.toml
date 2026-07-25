@@ -1,4 +1,4 @@
-name = "carousel-portfolio"
+name = "carousel"
 compatibility_date = "2024-01-01"
 
 # Static site via Workers Assets (works with Cloudflare Workers Builds deploy tokens)
