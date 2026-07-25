@@ -26,11 +26,8 @@ const CONFIG = {
     scaleMax: 1,
     scaleMin: 0.55,
     opacityMin: 0.12,
-    maxVisibleRel: 1,
+    maxVisibleRel: 0,
     glowOnlyRel: true,
-    peerScale: 0.62,
-    peerOpacity: 0.22,
-    peerPush: 0.52,
     parallaxX: 2,
     parallaxY: 2,
   },
@@ -39,11 +36,8 @@ const CONFIG = {
     scaleMax: 1,
     scaleMin: 0.5,
     opacityMin: 0.1,
-    maxVisibleRel: 1,
+    maxVisibleRel: 0,
     glowOnlyRel: true,
-    peerScale: 0.58,
-    peerOpacity: 0.18,
-    peerPush: 0.56,
     parallaxX: 2,
     parallaxY: 2,
   },
@@ -144,7 +138,6 @@ function setItemFocusState(item, state) {
   item.dataset.focusState = state;
   item.classList.remove("is-glow-peek", "is-center-focus");
   if (state === "center") item.classList.add("is-center-focus");
-  if (state === "glow") item.classList.add("is-glow-peek");
 }
 
 function getActiveConfig() {
@@ -358,12 +351,6 @@ function placeItem(item, t, rel, metrics) {
       opacity = 1;
       rotation = 0;
       setItemFocusState(item, "center");
-    } else if (Math.abs(rel) === 1) {
-      scale = config.peerScale;
-      opacity = config.peerOpacity;
-      rotation = rel * 7;
-      xOffset = rel * cardW * config.peerPush;
-      setItemFocusState(item, "glow");
     }
   } else {
     setItemFocusState(item, "none");
@@ -393,12 +380,12 @@ function placeItem(item, t, rel, metrics) {
 }
 
 function triggerHueSweep(index) {
-  const sweep = items[index]?.querySelector(".file-sweep");
-  if (!sweep || prefersReducedMotion()) return;
+  const pocket = items[index]?.querySelector(".file-pocket");
+  if (!pocket || prefersReducedMotion()) return;
 
-  sweep.classList.remove("is-sweeping");
+  pocket.classList.remove("is-sweeping");
   requestAnimationFrame(() => {
-    sweep.classList.add("is-sweeping");
+    pocket.classList.add("is-sweeping");
   });
 }
 

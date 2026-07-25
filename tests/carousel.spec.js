@@ -28,34 +28,59 @@ test.describe("Carousel portfolio", () => {
     expect(secondTitle).not.toBe(firstTitle);
   });
 
-  test("active file card shows folder tab and title", async ({ page }) => {
+  test("active file card shows folder flap and title", async ({ page }) => {
     const activeCard = page.locator(".carousel-item.is-active .file-card");
     await expect(activeCard).toBeVisible();
-    await expect(activeCard.locator(".file-tab")).toBeVisible();
-    await expect(activeCard.locator(".file-face")).toBeVisible();
+    await expect(activeCard.locator(".file-flap")).toBeVisible();
+    await expect(activeCard.locator(".file-pocket")).toBeVisible();
+    await expect(activeCard.locator(".file-sheet")).toHaveCount(3);
     await expect(activeCard.locator(".card-title")).toHaveText("Video Editing");
   });
 
-  test("desktop hover fans file sheets on active card", async ({ page }, testInfo) => {
+  test("desktop hover opens folder flap on active card", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "Hover only on desktop project");
 
     const activeCard = page.locator(".carousel-item.is-active .file-card");
-    const backSheet = activeCard.locator(".file-sheet--back");
-
-    const before = await backSheet.evaluate((el) => {
-      const t = getComputedStyle(el).transform;
-      return t === "none" ? "" : t;
-    });
+    const flap = activeCard.locator(".file-flap");
 
     await activeCard.hover();
     await page.waitForTimeout(450);
 
-    const after = await backSheet.evaluate((el) => {
-      const t = getComputedStyle(el).transform;
-      return t === "none" ? "" : t;
-    });
+    await expect(activeCard).toHaveClass(/is-folder-open/);
+    const flapTransform = await flap.evaluate((el) => getComputedStyle(el).transform);
+    expect(flapTransform).not.toBe("none");
+  });
 
-    expect(after).not.toBe(before);
+  test("desktop hover opens after scroll without mouse leave", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "Hover only on desktop project");
+
+    const stage = page.locator(".carousel-stage");
+    await stage.hover();
+
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(500);
+
+    const activeCard = page.locator(".carousel-item.is-active .file-card");
+    const box = await activeCard.boundingBox();
+    expect(box).toBeTruthy();
+
+    /* Move onto the new active card (simulates pointer already over center) */
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(450);
+
+    await expect(activeCard).toHaveClass(/is-folder-open/);
+
+    /* Scroll again while staying on the card — should open without leave/re-enter */
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(500);
+
+    const nextActive = page.locator(".carousel-item.is-active .file-card");
+    const nextBox = await nextActive.boundingBox();
+    expect(nextBox).toBeTruthy();
+    await page.mouse.move(nextBox.x + nextBox.width / 2, nextBox.y + nextBox.height / 2);
+    await page.waitForTimeout(450);
+
+    await expect(nextActive).toHaveClass(/is-folder-open/);
   });
 
   test("arc tracks are visible", async ({ page }) => {
@@ -65,18 +90,23 @@ test.describe("Carousel portfolio", () => {
 
   test("active card shows service title only", async ({ page }) => {
     const activeCard = page.locator(".carousel-item.is-active .file-card");
-    await expect(activeCard.locator(".file-tab-label")).toHaveText("Video Editing");
     await expect(activeCard.locator(".card-title")).toHaveText("Video Editing");
+    await expect(activeCard.locator(".card-tagline")).toHaveText("Cuts that hold attention");
     await expect(activeCard.locator(".card-text")).toHaveCount(0);
     await expect(activeCard.locator(".card-cta")).toHaveCount(0);
   });
 
-  test("inactive file cards are desaturated", async ({ page }, testInfo) => {
+  test("inactive file cards are visually muted", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "Desktop inactive styling");
 
-    const inactive = page.locator(".carousel-item:not(.is-active) .file-face").first();
-    const filter = await inactive.evaluate((el) => getComputedStyle(el).filter);
-    expect(filter).toContain("saturate");
+    const inactive = page.locator(".carousel-item:not(.is-active) .file-card").first();
+    const active = page.locator(".carousel-item.is-active .file-card");
+
+    const inactiveFilter = await inactive.evaluate((el) => getComputedStyle(el).filter);
+    const activeFilter = await active.evaluate((el) => getComputedStyle(el).filter);
+
+    expect(inactiveFilter).toContain("saturate");
+    expect(activeFilter === "none" || !activeFilter.includes("saturate(0")).toBe(true);
   });
 
   test("scroll triggers card activation animation", async ({ page }) => {
@@ -88,28 +118,35 @@ test.describe("Carousel portfolio", () => {
     expect(fontFamily.toLowerCase()).toContain("google sans flex");
   });
 
-  test("mobile shows one focus card with side glows", async ({ page }, testInfo) => {
+  test("mobile shows one focus card only", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name === "chromium-desktop",
       "Mobile focus layout applies to mobile/tablet only"
     );
 
+    await page.waitForFunction(
+      () => {
+        const center = document.querySelector(".carousel-item.is-center-focus");
+        const stage = document.querySelector(".carousel-stage--mobile-focus");
+        if (!center || !stage) return false;
+        if (parseFloat(getComputedStyle(center).opacity) <= 0.85) return false;
+        return document.querySelectorAll(".carousel-item.is-glow-peek").length === 0;
+      },
+      null,
+      { timeout: 12000 }
+    );
+
     await expect(page.locator(".carousel-item.is-center-focus")).toHaveCount(1);
-    await expect(page.locator(".carousel-item.is-glow-peek")).toHaveCount(2);
+    await expect(page.locator(".carousel-item.is-glow-peek")).toHaveCount(0);
     await expect(page.locator(".carousel-stage--mobile-focus")).toBeVisible();
 
-    const dominantCards = await page.locator(".carousel-item").evaluateAll((nodes) =>
-      nodes.filter((el) => parseFloat(getComputedStyle(el).opacity) > 0.85).length
+    const visibleCards = await page.locator(".carousel-item").evaluateAll((nodes) =>
+      nodes.filter((el) => {
+        const style = getComputedStyle(el);
+        return style.visibility !== "hidden" && parseFloat(style.opacity) > 0.05;
+      }).length
     );
-    expect(dominantCards).toBe(1);
-
-    const glowCards = await page.locator(".carousel-item.is-glow-peek").evaluateAll((nodes) =>
-      nodes.every((el) => {
-        const opacity = parseFloat(getComputedStyle(el).opacity);
-        return opacity > 0.08 && opacity < 0.45;
-      })
-    );
-    expect(glowCards).toBe(true);
+    expect(visibleCards).toBe(1);
 
     const cardWidth = await page.locator(".carousel-item.is-active .card").evaluate((el) => {
       return getComputedStyle(el).width;
@@ -131,7 +168,7 @@ test.describe("Carousel portfolio", () => {
 
     expect(secondTitle).not.toBe(firstTitle);
     await expect(page.locator(".carousel-item.is-center-focus")).toHaveCount(1);
-    await expect(page.locator(".carousel-item.is-glow-peek")).toHaveCount(2);
+    await expect(page.locator(".carousel-item.is-glow-peek")).toHaveCount(0);
   });
 
   test("mobile horizontal swipe swaps focus card", async ({ page }, testInfo) => {
@@ -189,9 +226,9 @@ test.describe("Carousel portfolio", () => {
     await expect(page.locator(".hero-services-cta")).toHaveAttribute("href", "mailto:hello@levelupcontent.com");
   });
 
-  test("active card shows tagline and service icon", async ({ page }) => {
+  test("active card shows tagline and stacked papers", async ({ page }) => {
     const activeCard = page.locator(".carousel-item.is-active .file-card");
-    await expect(activeCard.locator(".file-tab-icon svg")).toBeVisible();
+    await expect(activeCard.locator(".file-sheet--front")).toBeVisible();
     await expect(activeCard.locator(".card-tagline")).toBeVisible();
     await expect(activeCard.locator(".card-tagline")).toHaveText("Cuts that hold attention");
   });
@@ -209,13 +246,15 @@ test.describe("Carousel portfolio", () => {
     expect(dotLabel).toBe(activeTitle?.trim());
   });
 
-  test("active card shows studio folder accents", async ({ page }) => {
+  test("active card shows deliverable meta on flap", async ({ page }) => {
     const activeCard = page.locator(".carousel-item.is-active .file-card");
-    await expect(activeCard.locator(".file-tab-badge")).toHaveText("EDIT");
+    await expect(activeCard.locator(".card-meta")).toContainText("5 deliverables");
+    await expect(activeCard.locator(".file-menu")).toBeVisible();
   });
 
   test("clicking a card opens in-stage service detail", async ({ page }) => {
-    await page.locator(".carousel-item.is-active .file-card").click();
+    const activeCard = page.locator(".carousel-item.is-active .file-card");
+    await activeCard.click();
     const detail = page.locator("#service-detail");
     await expect(detail).toBeVisible();
     await expect(page.locator(".carousel-stage")).toHaveClass(/is-service-view/);
@@ -224,15 +263,19 @@ test.describe("Carousel portfolio", () => {
     await expect(detail.locator(".service-thread__label").first()).toContainText("Long-form");
     await expect(detail.locator(".service-thread__path")).toHaveCount(5);
     await expect(detail.locator(".service-detail__float-icon")).toHaveCount(4);
-    await expect(page.locator(".carousel-track")).toHaveCSS("opacity", "0");
+    /* Soft dissolve: card fades while detail appears in place */
+    await expect(activeCard).toHaveCSS("opacity", "0", { timeout: 3000 });
+    await expect(detail.locator(".service-detail__header-box")).toBeVisible();
+    await expect(detail.locator(".service-detail__float-icon").first()).toBeVisible({ timeout: 3000 });
   });
 
   test("service detail closes with back button", async ({ page }) => {
     await page.locator(".carousel-item.is-active .file-card").click();
     await expect(page.locator("#service-detail")).toBeVisible();
+    await expect(page.locator(".service-detail__back")).toBeVisible();
+    await page.waitForTimeout(1200);
     await page.locator(".service-detail__back").click({ force: true });
-    await page.waitForTimeout(900);
-    await expect(page.locator("#service-detail")).toBeHidden();
+    await expect(page.locator("#service-detail")).toBeHidden({ timeout: 8000 });
     await expect(page.locator(".carousel-item.is-active")).toBeVisible();
   });
 });

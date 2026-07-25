@@ -1,12 +1,36 @@
-const CARD_REVEAL_SELECTORS = [".card-title", ".card-tagline"];
+const CARD_REVEAL_SELECTORS = [".card-title", ".card-tagline", ".card-meta"];
 
 let activeCardTween = null;
 let closeCardTween = null;
 let hoverTween = null;
 let boundHoverItem = null;
+let lastPointer = { x: -1, y: -1 };
+let pointerTracking = false;
 
 function isFinePointer() {
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
+function ensurePointerTracking() {
+  if (pointerTracking) return;
+  pointerTracking = true;
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      lastPointer.x = e.clientX;
+      lastPointer.y = e.clientY;
+    },
+    { passive: true }
+  );
+}
+
+function isPointerOverCard(card) {
+  if (!card) return false;
+  if (card.matches(":hover")) return true;
+  if (lastPointer.x < 0 || lastPointer.y < 0) return false;
+
+  const top = document.elementFromPoint(lastPointer.x, lastPointer.y);
+  return Boolean(top && (top === card || card.contains(top)));
 }
 
 function getActiveCard() {
@@ -17,16 +41,14 @@ function getFolderParts(card) {
   if (!card) return null;
 
   return {
-    tab: card.querySelector(".file-tab"),
-    icon: card.querySelector(".file-tab-icon"),
-    badge: card.querySelector(".file-tab-badge"),
+    flap: card.querySelector(".file-flap"),
+    pocket: card.querySelector(".file-pocket"),
     sheets: card.querySelectorAll(".file-sheet"),
-    face: card.querySelector(".file-face"),
-    glow: card.querySelector(".file-glow"),
-    grid: card.querySelector(".file-grid"),
-    sweep: card.querySelector(".file-sweep"),
-    fold: card.querySelector(".file-fold"),
   };
+}
+
+function clearSheetTransforms(sheets) {
+  sheets.forEach((sheet) => gsap.set(sheet, { clearProps: "transform,x,y,rotation,xPercent,yPercent,scale" }));
 }
 
 function resetCardContent(card) {
@@ -40,21 +62,54 @@ function resetCardContent(card) {
   const parts = getFolderParts(card);
   if (!parts) return;
 
-  [
-    parts.tab,
-    parts.icon,
-    parts.badge,
-    parts.face,
-    parts.glow,
-    parts.grid,
-    parts.fold,
-    parts.sweep,
-  ].forEach((el) => {
-    if (el) gsap.set(el, { clearProps: "all" });
+  card.classList.remove("is-folder-open");
+  if (parts.flap) gsap.set(parts.flap, { clearProps: "all" });
+  if (parts.pocket) gsap.set(parts.pocket, { clearProps: "all" });
+  clearSheetTransforms(parts.sheets);
+  parts.sheets.forEach((sheet) => gsap.set(sheet, { clearProps: "opacity,visibility,autoAlpha" }));
+}
+
+function killFolderTimeline(card) {
+  if (!card?._folderTl) return;
+  card._folderTl.kill();
+  delete card._folderTl;
+}
+
+function getFolderTimeline(card, flap) {
+  if (card._folderTl) return card._folderTl;
+
+  gsap.set(flap, {
+    transformOrigin: "50% 100%",
+    force3D: true,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
   });
 
-  parts.sheets.forEach((sheet) => gsap.set(sheet, { clearProps: "all" }));
-  parts.sweep?.classList.remove("is-sweeping");
+  const ease = window.Motion ? Motion.ease() : "power2.out";
+
+  const tl = gsap.timeline({
+    paused: true,
+    onReverseComplete: () => {
+      card.classList.remove("is-folder-open");
+    },
+  });
+
+  /* power2.out opens smoothly; reverse() becomes power2.in for a soft close */
+  tl.to(
+    flap,
+    {
+      rotationX: -48,
+      rotationY: 0,
+      rotationZ: 0,
+      duration: 0.55,
+      ease,
+    },
+    0
+  );
+
+  card._folderTl = tl;
+  return tl;
 }
 
 function unbindFileHover() {
@@ -64,6 +119,12 @@ function unbindFileHover() {
   if (card) {
     card.removeEventListener("mouseenter", card._onFileEnter);
     card.removeEventListener("mouseleave", card._onFileLeave);
+    killFolderTimeline(card);
+    card.classList.remove("is-folder-open");
+    const flap = card.querySelector(".file-flap");
+    if (flap) gsap.set(flap, { rotationX: 0, rotationY: 0, rotationZ: 0 });
+    delete card._onFileEnter;
+    delete card._onFileLeave;
   }
 
   boundHoverItem = null;
@@ -72,40 +133,54 @@ function unbindFileHover() {
 function bindFileHover(item, card) {
   if (!isFinePointer() || isMobileCarousel()) return;
 
+  ensurePointerTracking();
   unbindFileHover();
   boundHoverItem = item;
 
   const parts = getFolderParts(card);
+  if (parts.flap) getFolderTimeline(card, parts.flap);
 
   const onEnter = () => {
     if (!item.classList.contains("is-active")) return;
-    if (hoverTween) hoverTween.kill();
+    if (!parts.flap) return;
 
-    hoverTween = gsap.timeline({ defaults: { ease: window.Motion ? Motion.ease() : "power2.out", overwrite: "auto" } });
-    hoverTween.to(parts.sheets[0], { rotation: -7, y: 11, x: -6, duration: 0.45 }, 0);
-    hoverTween.to(parts.sheets[1], { rotation: 4.5, y: 6, x: 5, duration: 0.45 }, 0);
-    hoverTween.to(parts.face, { y: -6, duration: 0.5 }, 0);
-    hoverTween.to(parts.tab, { y: -6, duration: 0.4 }, 0);
-    if (parts.glow) hoverTween.to(parts.glow, { scale: 1.1, duration: 0.5 }, 0);
+    const tl = getFolderTimeline(card, parts.flap);
+    card.classList.add("is-folder-open");
+    hoverTween = tl;
+    tl.play();
   };
 
   const onLeave = () => {
-    if (hoverTween) hoverTween.kill();
-    hoverTween = gsap.to([...parts.sheets, parts.face, parts.tab], {
-      rotation: 0,
-      rotationX: 0,
-      x: 0,
-      y: (i, el) => (el === parts.tab ? -2 : 0),
-      duration: 0.45,
-      ease: window.Motion ? Motion.ease() : "power2.out",
-      overwrite: "auto",
-    });
+    if (!parts.flap) return;
+
+    const tl = getFolderTimeline(card, parts.flap);
+    hoverTween = tl;
+    /* Keep is-folder-open until reverse finishes so filters/perspective don't snap */
+    tl.reverse();
   };
 
   card._onFileEnter = onEnter;
   card._onFileLeave = onLeave;
   card.addEventListener("mouseenter", onEnter);
   card.addEventListener("mouseleave", onLeave);
+
+  /*
+   * After scroll, the pointer may already sit on the new active card without a
+   * mouseenter. Sync open/closed to the current pointer hit-test.
+   */
+  const syncPointerHover = () => {
+    if (!item.classList.contains("is-active") || boundHoverItem !== item) return;
+    if (isPointerOverCard(card)) onEnter();
+    else if (card.classList.contains("is-folder-open") || (card._folderTl && card._folderTl.progress() > 0)) {
+      onLeave();
+    }
+  };
+
+  requestAnimationFrame(() => {
+    syncPointerHover();
+    /* Cards are still tweening on the arc — recheck once motion settles */
+    window.setTimeout(syncPointerHover, 320);
+  });
 }
 
 function animateFolderClose(card) {
@@ -113,11 +188,23 @@ function animateFolderClose(card) {
   if (!parts) return null;
 
   if (closeCardTween) closeCardTween.kill();
+  if (hoverTween) {
+    if (hoverTween !== card._folderTl) hoverTween.kill();
+  }
+  killFolderTimeline(card);
 
+  card.classList.remove("is-folder-open");
   gsap.set(card, { y: 0 });
-  gsap.set(parts.tab, { rotationX: 0, y: 0 });
-  gsap.set(parts.face, { rotationX: 0, y: 0 });
-  gsap.set(parts.sheets, { rotation: 0, x: 0, y: (i) => (i === 0 ? 3 : 1), autoAlpha: 0.2 });
+  if (parts.flap) {
+    gsap.set(parts.flap, {
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      y: 0,
+    });
+  }
+  /* Hand layout back to CSS so papers match non-active centering */
+  clearSheetTransforms(parts.sheets);
 
   return null;
 }
@@ -130,36 +217,31 @@ function animateFolderOpen(item, card) {
   const mobile = isMobileCarousel();
   const reduced = prefersReducedMotion();
 
+  /* Always use CSS sheet positions — do not GSAP-nudge papers */
+  clearSheetTransforms(parts.sheets);
+
   if (mobile || reduced) {
     gsap.set(card, { y: -10 });
-    gsap.set(parts.tab, { rotationX: -6, y: -2, transformOrigin: "bottom left" });
-    gsap.set(parts.sheets, {
-      autoAlpha: 0.55,
-      rotation: (i) => (i === 0 ? -3 : 2),
-      y: (i) => (i === 0 ? 6 : 3),
-    });
-    gsap.set(parts.face, { rotationX: 0, y: 0 });
+    if (parts.flap) {
+      gsap.set(parts.flap, { rotationX: 0, rotationY: 0, rotationZ: 0, y: 0 });
+    }
     return;
   }
 
   if (activeCardTween) activeCardTween.kill();
 
   gsap.set(card, { y: -14, autoAlpha: 1 });
-  gsap.set(parts.tab, {
-    y: -2,
-    rotationX: 0,
-    autoAlpha: 1,
-    transformOrigin: "bottom left",
-  });
-  gsap.set(parts.sheets, {
-    autoAlpha: (i) => (i === 0 ? 0.52 : 0.76),
-    rotation: (i) => (i === 0 ? -5 : 3),
-    y: (i) => (i === 0 ? 9 : 4),
-    x: (i) => (i === 0 ? -5 : 4),
-  });
-  gsap.set(parts.face, { rotationX: 0, y: 0, autoAlpha: 1, transformOrigin: "50% 100%" });
-  gsap.set(parts.grid, { autoAlpha: 0.2 });
-  gsap.set(parts.glow, { scale: 1, autoAlpha: 1 });
+  if (parts.flap) {
+    gsap.set(parts.flap, {
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      y: 0,
+      autoAlpha: 1,
+      transformOrigin: "50% 100%",
+      force3D: true,
+    });
+  }
   gsap.set(targets, { autoAlpha: 1, y: 0 });
 
   bindFileHover(item, card);
@@ -184,6 +266,8 @@ function animateCardActivation(index, prevIndex) {
 }
 
 function initCardEffects() {
+  ensurePointerTracking();
+
   const firstActive = getActiveCard();
   const firstItem = document.querySelector(".carousel-item.is-active");
 
@@ -191,13 +275,16 @@ function initCardEffects() {
     if (!isMobileCarousel() && !prefersReducedMotion()) {
       const parts = getFolderParts(firstActive);
       gsap.set(firstActive, { y: -14 });
-      gsap.set(parts.tab, { rotationX: 0, y: -2, transformOrigin: "bottom left" });
-      gsap.set(parts.sheets, {
-        rotation: (i) => (i === 0 ? -5 : 3),
-        y: (i) => (i === 0 ? 9 : 4),
-        x: (i) => (i === 0 ? -5 : 4),
-        autoAlpha: (i) => (i === 0 ? 0.52 : 0.76),
-      });
+      clearSheetTransforms(parts.sheets);
+      if (parts.flap) {
+        gsap.set(parts.flap, {
+          rotationX: 0,
+          rotationY: 0,
+          rotationZ: 0,
+          transformOrigin: "50% 100%",
+          force3D: true,
+        });
+      }
       bindFileHover(firstItem, firstActive);
     } else {
       gsap.set(firstActive, { y: -10 });

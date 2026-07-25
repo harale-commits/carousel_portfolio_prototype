@@ -475,13 +475,46 @@ function getCarouselChrome() {
   const stage = document.querySelector(".carousel-stage");
   if (!stage) return [];
 
+  /* Ambient UI only — keep the track/cards so the open morph can happen in place */
   return [
     document.querySelector(".hero-header"),
     stage.querySelector(".arc-svg"),
-    stage.querySelector(".carousel-track"),
     stage.querySelector(".carousel-progress"),
     stage.querySelector(".carousel-scroll-hint"),
   ].filter(Boolean);
+}
+
+function getSiblingCards(sourceCard) {
+  if (!sourceCard) return [];
+  const activeItem = sourceCard.closest(".carousel-item");
+  return items
+    .filter((item) => item !== activeItem)
+    .map((item) => item.querySelector(".file-card"))
+    .filter(Boolean);
+}
+
+function resetCardMotionProps(cards) {
+  cards.forEach((card) => {
+    if (!card) return;
+    gsap.set(card, { clearProps: "opacity,visibility,transform,scale,x,y,rotation,filter" });
+    card
+      .querySelectorAll(
+        ".file-sheet, .file-pocket, .file-pocket-shine, .file-flap, .file-flap-edge, .file-flap-body, .file-flap-copy, .file-flap-bottom, .file-flap-top, .file-menu, .card-title, .card-tagline, .card-meta"
+      )
+      .forEach((el) => {
+        gsap.set(el, { clearProps: "all" });
+      });
+  });
+}
+
+function resetAllFolderCards() {
+  resetCardMotionProps(
+    items.map((item) => item.querySelector(".file-card")).filter(Boolean)
+  );
+}
+
+function canSoftBlur() {
+  return !document.body.classList.contains("is-mobile-perf") && !prefersReducedMotion();
 }
 
 function populateServiceDetail(serviceId) {
@@ -524,6 +557,8 @@ function openServiceDetail(serviceId, sourceCard) {
 
   if (serviceDetailTween) serviceDetailTween.kill();
 
+  resetAllFolderCards();
+
   isServiceDetailOpen = true;
   stage.classList.add("is-service-view");
   if (typeof lockServiceViewScroll === "function") lockServiceViewScroll();
@@ -531,7 +566,6 @@ function openServiceDetail(serviceId, sourceCard) {
   detail.removeAttribute("hidden");
   detail.setAttribute("aria-hidden", "false");
 
-  /* Force layout so orbit positions use real size (not 0×0 while hidden) */
   gsap.set(detail, { autoAlpha: 1, opacity: 1, visibility: "visible" });
   positionOrbitIcons(detail);
   bindOrbitResize(detail);
@@ -542,16 +576,23 @@ function openServiceDetail(serviceId, sourceCard) {
   const floatIconInners = detail.querySelectorAll(".service-detail__float-icon-inner");
   const orbitRing = detail.querySelector(".service-detail__orbit-path");
   const headerBox = detail.querySelector(".service-detail__header-box");
+  const title = detail.querySelector(".service-detail__title");
+  const panel = detail.querySelector(".service-detail__panel");
   const backBtn = detail.querySelector(".service-detail__back");
   const chrome = getCarouselChrome();
+  const siblingCards = getSiblingCards(sourceCard);
   const orbitOrigin = getOrbitOrigin(detail);
+  const useBlur = canSoftBlur();
 
   if (prefersReducedMotion()) {
-    gsap.set(items, { autoAlpha: 0 });
+    if (sourceCard) gsap.set(sourceCard, { autoAlpha: 0 });
+    gsap.set(siblingCards, { autoAlpha: 0 });
     gsap.set(chrome, { autoAlpha: 0 });
     gsap.set(detail, { autoAlpha: 1 });
     gsap.set(backBtn, { autoAlpha: 1, x: 0 });
-    gsap.set(headerBox, { autoAlpha: 1, y: 0, scale: 1 });
+    gsap.set(headerBox, { autoAlpha: 1, scale: 1, y: 0, filter: "none" });
+    gsap.set(title, { autoAlpha: 1 });
+    gsap.set(panel, { autoAlpha: 1, scale: 1 });
     gsap.set(orbitRing, { autoAlpha: 0.35, strokeDashoffset: 0 });
     gsap.set(floatIcons, {
       autoAlpha: 0.94,
@@ -569,15 +610,25 @@ function openServiceDetail(serviceId, sourceCard) {
     return;
   }
 
-  gsap.set(backBtn, { autoAlpha: 0, x: -10 });
-  gsap.set(headerBox, { autoAlpha: 0, y: 14, scale: 0.96 });
+  /* Soft dissolve setup */
+  gsap.set(backBtn, { autoAlpha: 0, x: -6 });
+  gsap.set(panel, { autoAlpha: 1, scale: 1 });
+  gsap.set(headerBox, {
+    autoAlpha: 0,
+    scale: 0.94,
+    y: 10,
+    filter: useBlur ? "blur(8px)" : "none",
+    transformOrigin: "50% 50%",
+    force3D: true,
+  });
+  gsap.set(title, { autoAlpha: 1 });
   gsap.set(orbitRing, { autoAlpha: 0, strokeDashoffset: 160 });
   floatIcons.forEach((icon) => {
     const targetX = parseFloat(icon.dataset.orbitX || "0");
     const targetY = parseFloat(icon.dataset.orbitY || "0");
     gsap.set(icon, {
       autoAlpha: 0,
-      scale: 0.28,
+      scale: 0.2,
       xPercent: -50,
       yPercent: -50,
       x: orbitOrigin.x - targetX,
@@ -585,17 +636,16 @@ function openServiceDetail(serviceId, sourceCard) {
       rotation: 0,
     });
     const inner = icon.querySelector(".service-detail__float-icon-inner");
-    if (inner) gsap.set(inner, { x: 0, y: 0, rotation: 0, scale: 0.8 });
+    if (inner) gsap.set(inner, { x: 0, y: 0, rotation: 0, scale: 0.75 });
   });
   gsap.set(threadPaths, { autoAlpha: 0, strokeDashoffset: 120 });
-  gsap.set(threads, { autoAlpha: 0, scale: 0.88 });
-
-  /* Brief hide for entrance — keep layout (visibility) so positions stay valid */
-  gsap.set(detail, { opacity: 0 });
+  gsap.set(threads, { autoAlpha: 0, scale: 0.94 });
+  gsap.set(detail, { opacity: 1 });
 
   serviceDetailTween = gsap.timeline({
     defaults: { ease: window.Motion ? Motion.ease() : "power2.out" },
     onComplete: () => {
+      gsap.set(headerBox, { clearProps: "filter,transform,scale,y" });
       positionOrbitIcons(detail);
       floatIcons.forEach((icon) => {
         gsap.set(icon, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 1, autoAlpha: 0.94 });
@@ -607,15 +657,49 @@ function openServiceDetail(serviceId, sourceCard) {
     },
   });
 
-  serviceDetailTween.to(items, { autoAlpha: 0, duration: 0.35, stagger: 0.03 }, 0);
+  /* Phase 1 — card soft-dissolves; title box settles in place */
+  serviceDetailTween.to(siblingCards, { autoAlpha: 0, duration: 0.28, stagger: 0.02 }, 0);
   serviceDetailTween.to(chrome, { autoAlpha: 0, duration: 0.3 }, 0);
-  serviceDetailTween.to(detail, { opacity: 1, duration: 0.45 }, 0.12);
-  serviceDetailTween.to(backBtn, { autoAlpha: 1, x: 0, duration: 0.4 }, 0.16);
-  serviceDetailTween.to(headerBox, { autoAlpha: 1, y: 0, scale: 1, duration: 0.55 }, 0.2);
+
+  if (sourceCard) {
+    serviceDetailTween.to(
+      sourceCard,
+      {
+        autoAlpha: 0,
+        scale: 0.92,
+        filter: useBlur ? "blur(10px)" : "none",
+        duration: 0.42,
+        ease: window.Motion ? Motion.ease() : "power2.inOut",
+      },
+      0
+    );
+  }
+
+  serviceDetailTween.to(
+    headerBox,
+    {
+      autoAlpha: 1,
+      scale: 1,
+      y: 0,
+      filter: "blur(0px)",
+      duration: 0.48,
+      ease: window.Motion ? Motion.ease() : "power2.out",
+    },
+    0.12
+  );
+  serviceDetailTween.to(backBtn, { autoAlpha: 1, x: 0, duration: 0.32 }, 0.28);
+
+  /* Phase 2 — icons spring onto the orbit */
+  const iconsAt = 0.38;
   serviceDetailTween.to(
     orbitRing,
-    { autoAlpha: 0.42, strokeDashoffset: 0, duration: 0.75, ease: window.Motion ? Motion.ease() : "power1.out" },
-    0.22
+    {
+      autoAlpha: 0.42,
+      strokeDashoffset: 0,
+      duration: 0.55,
+      ease: window.Motion ? Motion.ease() : "power1.out",
+    },
+    iconsAt
   );
   serviceDetailTween.to(
     floatIcons,
@@ -627,23 +711,38 @@ function openServiceDetail(serviceId, sourceCard) {
       xPercent: -50,
       yPercent: -50,
       rotation: 0,
-      duration: 0.7,
-      stagger: 0.11,
-      ease: window.Motion ? Motion.springSnap() : "back.out(1.7)",
+      duration: 0.55,
+      stagger: 0.07,
+      ease: window.Motion ? Motion.springSnap() : "back.out(1.5)",
     },
-    0.26
+    iconsAt + 0.04
   );
   serviceDetailTween.to(
     floatIconInners,
-    { scale: 1, duration: 0.55, stagger: 0.11, ease: window.Motion ? Motion.springUi() : "back.out(1.2)" },
-    0.3
+    {
+      scale: 1,
+      duration: 0.4,
+      stagger: 0.07,
+      ease: window.Motion ? Motion.springUi() : "back.out(1.2)",
+    },
+    iconsAt + 0.08
   );
   serviceDetailTween.to(
     threadPaths,
-    { autoAlpha: 1, strokeDashoffset: 0, duration: 0.65, stagger: 0.07, ease: window.Motion ? Motion.ease() : "power1.out" },
-    0.3
+    {
+      autoAlpha: 1,
+      strokeDashoffset: 0,
+      duration: 0.45,
+      stagger: 0.05,
+      ease: window.Motion ? Motion.ease() : "power1.out",
+    },
+    iconsAt + 0.12
   );
-  serviceDetailTween.to(threads, { autoAlpha: 1, scale: 1, duration: 0.5, stagger: 0.07 }, 0.38);
+  serviceDetailTween.to(
+    threads,
+    { autoAlpha: 1, scale: 1, duration: 0.38, stagger: 0.05 },
+    iconsAt + 0.14
+  );
 }
 
 function closeServiceDetail() {
@@ -658,10 +757,21 @@ function closeServiceDetail() {
   unbindOrbitResize();
 
   const floatIcons = detail.querySelectorAll(".service-detail__float-icon");
-  gsap.killTweensOf(floatIcons);
-  gsap.killTweensOf(detail.querySelectorAll(".service-detail__float-icon-inner"));
-
+  const floatIconInners = detail.querySelectorAll(".service-detail__float-icon-inner");
+  const headerBox = detail.querySelector(".service-detail__header-box");
+  const title = detail.querySelector(".service-detail__title");
+  const backBtn = detail.querySelector(".service-detail__back");
+  const threads = detail.querySelectorAll(".service-thread");
+  const threadPaths = detail.querySelectorAll(".service-thread__path");
+  const orbitRing = detail.querySelector(".service-detail__orbit-path");
+  const orbitOrigin = getOrbitOrigin(detail);
   const chrome = getCarouselChrome();
+  const siblingCards = getSiblingCards(lastFocusedCard);
+  const useBlur = canSoftBlur();
+
+  gsap.killTweensOf(floatIcons);
+  gsap.killTweensOf(floatIconInners);
+
   stage.classList.remove("is-service-view");
   if (typeof unlockServiceViewScroll === "function") unlockServiceViewScroll();
 
@@ -671,14 +781,19 @@ function closeServiceDetail() {
     settled = true;
     gsap.killTweensOf(detail);
     gsap.killTweensOf(chrome);
+    gsap.set(headerBox, { clearProps: "transform,scale,y,filter" });
+    gsap.set(title, { clearProps: "opacity,visibility" });
+    resetAllFolderCards();
     gsap.set(detail, { autoAlpha: 0 });
     detail.hidden = true;
     detail.setAttribute("aria-hidden", "true");
     isServiceDetailOpen = false;
+    if (typeof refreshCarouselPosition === "function") refreshCarouselPosition();
     if (lastFocusedCard) lastFocusedCard.focus({ preventScroll: true });
   };
 
   if (prefersReducedMotion()) {
+    resetAllFolderCards();
     if (typeof refreshCarouselPosition === "function") refreshCarouselPosition();
     gsap.set(detail, { autoAlpha: 0 });
     gsap.set(chrome, { autoAlpha: 1 });
@@ -687,15 +802,70 @@ function closeServiceDetail() {
   }
 
   if (typeof refreshCarouselPosition === "function") refreshCarouselPosition();
+  if (lastFocusedCard) {
+    gsap.set(lastFocusedCard, {
+      autoAlpha: 0,
+      scale: 0.94,
+      filter: useBlur ? "blur(8px)" : "none",
+    });
+  }
+  gsap.set(siblingCards, { autoAlpha: 0 });
+  gsap.set(chrome, { autoAlpha: 0 });
 
   serviceDetailTween = gsap.timeline({
     defaults: { ease: window.Motion ? Motion.ease() : "power2.out" },
     onComplete: finish,
   });
 
-  serviceDetailTween.to(detail, { autoAlpha: 0, duration: 0.28 }, 0);
-  serviceDetailTween.to(chrome, { autoAlpha: 1, duration: 0.35 }, 0.05);
-  serviceDetailTween.call(finish, null, 0.35);
+  /* Icons collapse inward */
+  serviceDetailTween.to(
+    floatIcons,
+    {
+      autoAlpha: 0,
+      scale: 0.22,
+      x: (i, el) => orbitOrigin.x - parseFloat(el.dataset.orbitX || "0"),
+      y: (i, el) => orbitOrigin.y - parseFloat(el.dataset.orbitY || "0"),
+      duration: 0.28,
+      stagger: 0.03,
+    },
+    0
+  );
+  serviceDetailTween.to(floatIconInners, { scale: 0.75, duration: 0.2, stagger: 0.03 }, 0);
+  serviceDetailTween.to(threadPaths, { autoAlpha: 0, duration: 0.18 }, 0);
+  serviceDetailTween.to(threads, { autoAlpha: 0, scale: 0.94, duration: 0.2 }, 0);
+  serviceDetailTween.to(orbitRing, { autoAlpha: 0, duration: 0.2 }, 0);
+  serviceDetailTween.to(backBtn, { autoAlpha: 0, duration: 0.16 }, 0);
+
+  /* Title box soft-dissolves; card returns */
+  serviceDetailTween.to(
+    headerBox,
+    {
+      autoAlpha: 0,
+      scale: 0.94,
+      y: 8,
+      filter: useBlur ? "blur(6px)" : "none",
+      duration: 0.32,
+    },
+    0.1
+  );
+
+  if (lastFocusedCard) {
+    serviceDetailTween.to(
+      lastFocusedCard,
+      {
+        autoAlpha: 1,
+        scale: 1,
+        filter: "blur(0px)",
+        duration: 0.4,
+        ease: window.Motion ? Motion.ease() : "power2.out",
+      },
+      0.22
+    );
+  }
+  serviceDetailTween.to(detail, { autoAlpha: 0, duration: 0.22 }, 0.38);
+  serviceDetailTween.to(siblingCards, { autoAlpha: 1, duration: 0.28, stagger: 0.02 }, 0.32);
+  serviceDetailTween.to(chrome, { autoAlpha: 1, duration: 0.3 }, 0.3);
+  serviceDetailTween.call(finish, null, 0.72);
 }
 
 function getServiceIdFromItem(item) {
@@ -748,4 +918,6 @@ function initServiceScreen() {
       }
     });
   });
+
+  resetAllFolderCards();
 }

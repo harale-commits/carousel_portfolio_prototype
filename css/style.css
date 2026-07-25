@@ -15,8 +15,8 @@
   --accent: #6366f1;
   --accent-soft: rgba(99, 102, 241, 0.15);
   --border: rgba(255, 255, 255, 0.08);
-  --card-w: clamp(200px, 22vw, 280px);
-  --card-h: clamp(200px, 24vw, 260px);
+  --card-w: clamp(210px, 23vw, 280px);
+  --card-h: clamp(210px, 23vw, 280px);
   --stage-lift: -7vh;
   --font-display: "Google Sans Flex", system-ui, sans-serif;
   --font-serif: "Google Sans Flex", system-ui, sans-serif;
@@ -28,6 +28,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html.lenis,
@@ -339,524 +340,333 @@ body {
   perspective: 900px;
 }
 
-/* ── File-shaped cards (glass studio archive) ── */
+/* ── Folder cards (pocket + papers + dark flap) ── */
 .file-card {
-  --file-glass: rgba(18, 18, 30, 0.72);
-  --file-glass-light: rgba(28, 28, 44, 0.82);
-  --file-tab: hsl(var(--hue), 52%, 42%);
-  --file-tab-light: hsl(var(--hue), 58%, 54%);
-  --file-ink: rgba(244, 244, 250, 0.94);
-  --file-muted: rgba(244, 244, 250, 0.52);
-  --file-tab-h: 24px;
+  --file-flap: #16161c;
+  --file-flap-ink: #f5f5f7;
+  --file-flap-muted: rgba(245, 245, 247, 0.55);
+  --file-radius: clamp(1.35rem, 3.2vw, 1.85rem);
+  --file-border: #0c0c10;
+  --pocket-top: hsl(var(--hue), 78%, 62%);
+  --pocket-mid: hsl(var(--hue), 72%, 48%);
+  --pocket-bot: hsl(var(--hue), 68%, 38%);
   position: relative;
-  margin-top: var(--file-tab-h);
   height: var(--card-h);
-  overflow: visible;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  display: flex;
-  flex-direction: column;
-  will-change: transform;
-  transform-style: preserve-3d;
-}
-
-.file-tab {
-  position: absolute;
-  top: calc(var(--file-tab-h) * -1);
-  left: 0;
-  z-index: 4;
-  min-width: 44%;
-  max-width: 72%;
-  height: var(--file-tab-h);
-  padding: 0 0.9rem 0 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: linear-gradient(135deg, var(--file-tab-light), var(--file-tab));
-  border: 1px solid hsla(var(--hue), 70%, 72%, 0.35);
-  border-bottom: none;
-  border-radius: 10px 12px 0 0;
+  width: 100%;
+  border-radius: var(--file-radius);
+  border: 3px solid var(--file-border);
+  background: var(--file-border);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 -4px 16px hsla(var(--hue), 55%, 40%, 0.22);
-  transform-origin: bottom left;
+    0 18px 40px rgba(0, 0, 0, 0.42),
+    0 4px 14px rgba(0, 0, 0, 0.28);
   overflow: hidden;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  color: var(--file-flap-ink);
 }
 
-.file-tab::before {
-  content: "";
+.file-pocket {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.22) 48%,
-    transparent 62%
-  );
-  transform: translateX(-120%);
-  pointer-events: none;
+  z-index: 0;
+  border-radius: calc(var(--file-radius) - 3px);
+  background:
+    linear-gradient(
+      165deg,
+      var(--pocket-top) 0%,
+      var(--pocket-mid) 48%,
+      var(--pocket-bot) 100%
+    );
 }
 
-.carousel-item.is-active .file-tab::before {
-  animation: file-tab-shimmer 2.8s ease-in-out infinite;
-}
-
-.file-tab::after {
-  content: "";
+.file-pocket-shine {
   position: absolute;
-  right: -14px;
-  bottom: 0;
-  width: 16px;
-  height: 14px;
-  background: var(--file-tab);
-  clip-path: polygon(0 100%, 0 0, 100% 100%);
-}
-
-.file-tab-label {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 0;
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.95);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-tab-badge {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-  margin-left: 0.35rem;
-  padding: 0.12rem 0.38rem;
-  border-radius: 3px;
-  font-size: 0.42rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.file-tab-icon {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  color: rgba(255, 255, 255, 0.95);
-  filter: drop-shadow(0 0 6px hsla(var(--hue), 90%, 72%, 0.55));
-}
-
-.file-tab-icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 38%;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.12) 42%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .file-stack {
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  left: 0;
+  right: 0;
+  top: 10%;
+  height: 42%;
+  z-index: 1;
   pointer-events: none;
+  overflow: hidden;
+  border-radius: calc(var(--file-radius) - 6px) calc(var(--file-radius) - 6px) 0 0;
 }
 
 .file-sheet {
   position: absolute;
-  left: 5px;
-  right: 5px;
-  bottom: -5px;
-  top: 5px;
-  border-radius: 3px 14px 14px 14px;
-  background: var(--file-glass);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  left: 50%;
+  bottom: 8%;
+  width: 42%;
+  height: 78%;
+  border-radius: 0.55rem;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f2f2f4 100%);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
   transform-origin: 50% 100%;
+}
+
+.file-sheet::before {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 18%;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 6px 0 rgba(0, 0, 0, 0.07),
+    0 12px 0 rgba(0, 0, 0, 0.06);
 }
 
 .file-sheet--back {
-  transform: rotate(-2.5deg) translateY(8px);
-  opacity: 0.35;
+  /* Centered fan — same layout for active & inactive */
+  transform: translateX(-56%) rotate(-10deg);
+  opacity: 0.92;
 }
 
 .file-sheet--mid {
-  transform: rotate(1.4deg) translateY(4px);
-  opacity: 0.55;
+  width: 44%;
+  height: 82%;
+  transform: translateX(-50%) rotate(0deg);
+  z-index: 1;
 }
 
+.file-sheet--front {
+  transform: translateX(-44%) rotate(10deg);
+  opacity: 0.96;
+}
 
-
-
-.file-face {
-  position: relative;
+.file-flap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
-  flex: 1;
+  height: 64%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  border-radius: 3px 16px 16px 16px;
-  overflow: hidden;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, transparent 42%),
-    linear-gradient(180deg, var(--file-glass-light), var(--file-glass));
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 14px 40px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  pointer-events: none;
   transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition: filter 0.45s ease;
+}
+
+/* Hover open: flap hinges forward from the bottom — no side tilt */
+.file-card.is-folder-open {
+  overflow: visible;
+  perspective: 1100px;
   transform-style: preserve-3d;
 }
 
-.file-face::before {
+.file-card.is-folder-open .file-flap {
+  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.38));
+}
+
+.file-card.is-folder-open .file-pocket {
+  filter: brightness(1.06);
+}
+
+.file-flap-edge {
+  display: block;
+  width: 100%;
+  height: clamp(2.4rem, 5.5vw, 3.1rem);
+  flex-shrink: 0;
+  fill: var(--file-flap);
+}
+
+.file-flap-body {
+  flex: 1;
+  margin-top: -1px;
+  padding: 0.15rem 1.05rem 1rem;
+  background: var(--file-flap);
+  border-radius: 0 0 calc(var(--file-radius) - 3px) calc(var(--file-radius) - 3px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.65rem;
+  pointer-events: auto;
+}
+
+.file-flap-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.file-flap-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.file-menu {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.1rem;
+  border-radius: 999px;
+  position: relative;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.file-menu::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 12%;
-  bottom: 12%;
+  left: 50%;
+  top: 50%;
   width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: linear-gradient(
-    180deg,
-    hsla(var(--hue), 80%, 68%, 0.15),
-    hsl(var(--hue), 75%, 62%),
-    hsla(var(--hue), 80%, 68%, 0.15)
-  );
-  box-shadow: 0 0 14px hsla(var(--hue), 80%, 58%, 0.45);
-  z-index: 3;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    -6px 0 0 currentColor,
+    6px 0 0 currentColor;
+}
+
+.file-flap-bottom {
+  display: flex;
+  align-items: center;
+}
+
+.card {
+  color: var(--file-flap-ink);
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.carousel-item.is-active .card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.card-tagline {
+  display: block;
+  margin: 0.28rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--file-flap-muted);
+  text-align: left;
+  line-height: 1.35;
+}
+
+.card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--file-flap-muted);
+}
+
+.card-meta-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
   opacity: 0.85;
 }
 
-.file-glow {
-  position: absolute;
-  inset: -20%;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at 50% 30%,
-    hsla(var(--hue), 70%, 58%, 0.22),
-    transparent 68%
-  );
-  opacity: 0;
-  transition: opacity 0.45s var(--ease-gigi);
-}
-
-.file-grid {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.18;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 18px 18px;
-  mask-image: radial-gradient(ellipse at 50% 45%, black 25%, transparent 78%);
-}
-
-.file-sweep {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.2) 50%,
-    transparent 62%
-  );
-  transform: translateX(-130%);
-  opacity: 0;
-}
-
-.file-sweep.is-sweeping {
-  animation: file-face-sweep 0.8s ease-out forwards;
-}
-
-.file-fold {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  z-index: 4;
-  width: 24px;
-  height: 24px;
-  pointer-events: none;
-  background: linear-gradient(
-    225deg,
-    transparent 48%,
-    hsla(var(--hue), 35%, 28%, 0.55) 48%,
-    hsla(var(--hue), 45%, 42%, 0.35) 100%
-  );
-  opacity: 0.55;
-}
-
-.file-card[data-service="video"] .file-grid {
-  background-image:
-    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 12px 12px, 18px 18px, 18px 18px;
-}
-
-.file-card[data-service="cinematic"] .file-grid {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(255, 255, 255, 0.035) 3px,
-      rgba(255, 255, 255, 0.035) 4px
-    );
-  opacity: 0.24;
-  mask-image: radial-gradient(ellipse at 50% 45%, black 30%, transparent 80%);
-}
-
-.file-card[data-service="reel"] .file-grid {
-  mask-image: linear-gradient(90deg, transparent, black 28%, black 72%, transparent);
-  opacity: 0.22;
-}
-
-.file-card[data-service="reel"] {
-  --file-tab-h: 28px;
-}
-
-.file-card[data-service="branding"] .file-tab {
-  min-width: 50%;
-}
-
-.file-card[data-service="branding"] .file-face {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, transparent 42%),
-    radial-gradient(ellipse at 80% 0%, hsla(var(--hue), 60%, 50%, 0.08), transparent 55%),
-    linear-gradient(180deg, var(--file-glass-light), var(--file-glass));
-}
-
 .carousel-item:not(.is-active) .file-card {
-  --file-tab: hsl(var(--hue), 22%, 26%);
-  --file-tab-light: hsl(var(--hue), 18%, 32%);
+  filter: saturate(0.72) brightness(0.92);
 }
 
-.carousel-item:not(.is-active) .file-face {
-  background: linear-gradient(180deg, rgba(20, 20, 32, 0.88), rgba(14, 14, 24, 0.92));
-  border-color: rgba(255, 255, 255, 0.05);
+.carousel-item:not(.is-active) .file-flap-body,
+.carousel-item:not(.is-active) .file-flap-edge {
+  opacity: 0.96;
 }
 
-.carousel-item:not(.is-active) .card-body {
-  opacity: 0.78;
-}
-
-.carousel-item:not(.is-active) .file-face::before {
-  opacity: 0.25;
-  box-shadow: none;
-}
-
-.carousel-item:not(.is-active) .file-tab {
-  opacity: 0.7;
-}
-
-.carousel-item:not(.is-active) .file-tab-icon {
-  opacity: 0.55;
-  filter: none;
+.carousel-item:not(.is-active) .card-tagline,
+.carousel-item:not(.is-active) .card-meta {
+  opacity: 0.72;
 }
 
 .carousel-item:not(.is-active) .file-sheet {
-  opacity: 0.2;
+  opacity: 0.55;
 }
 
 .carousel-item.is-active .file-card {
   filter: none;
   transform: translateY(-10px);
   transition: transform 0.45s var(--ease-gigi);
-}
-
-.carousel-item.is-active .file-face::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 4;
   box-shadow:
-    0 0 0 1px hsla(var(--hue), 65%, 68%, 0.42),
-    0 0 28px hsla(var(--hue), 72%, 55%, 0.28);
-}
-
-.carousel-item.is-active .file-glow {
-  opacity: 1;
-  animation: file-glow-pulse 3.2s ease-in-out infinite;
-}
-
-.carousel-item.is-active .file-face {
-  border-color: hsla(var(--hue), 58%, 66%, 0.38);
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.12) 0%, transparent 46%),
-    radial-gradient(ellipse at 50% 0%, hsla(var(--hue), 58%, 52%, 0.14), transparent 58%),
-    linear-gradient(180deg, var(--file-glass-light), var(--file-glass));
-  box-shadow:
-    0 26px 56px rgba(0, 0, 0, 0.48),
-    0 12px 32px hsla(var(--hue), 58%, 40%, 0.34),
-    0 0 0 1px hsla(var(--hue), 62%, 62%, 0.24) inset,
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 26px 56px rgba(0, 0, 0, 0.5),
+    0 10px 28px hsla(var(--hue), 60%, 40%, 0.28),
+    0 0 0 1px hsla(var(--hue), 70%, 70%, 0.18);
 }
 
 .carousel-item.is-active .file-sheet--back {
-  transform: rotate(-4deg) translateY(10px) translateX(-4px);
-  opacity: 0.5;
+  transform: translateX(-56%) rotate(-10deg);
+  opacity: 1;
 }
 
 .carousel-item.is-active .file-sheet--mid {
-  transform: rotate(2.5deg) translateY(5px) translateX(4px);
-  opacity: 0.72;
+  transform: translateX(-50%) rotate(0deg);
+  opacity: 1;
 }
 
-.carousel-item.is-active .file-tab {
-  transform: translateY(-2px);
-  transform-origin: bottom left;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 0 22px hsla(var(--hue), 70%, 52%, 0.35);
-}
-
-.carousel-item:not(.is-active) .file-tab-badge,
-.carousel-item:not(.is-active) .file-fold {
-  opacity: 0;
-}
-
-.card {
-  color: var(--file-ink);
-}
-
-@keyframes file-tab-shimmer {
-  0%, 72%, 100% { transform: translateX(-120%); }
-  38% { transform: translateX(130%); }
-}
-
-@keyframes file-glow-pulse {
-  0%, 100% { opacity: 0.75; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.04); }
-}
-
-@keyframes file-face-sweep {
-  0% { transform: translateX(-130%); opacity: 0; }
-  18% { opacity: 1; }
-  100% { transform: translateX(130%); opacity: 0; }
-}
-
-@keyframes file-icon-pulse {
-  0%, 100% { transform: scale(1); }
-  45% { transform: scale(1.18); }
-}
-
-.card-index {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.75rem;
-  z-index: 5;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: hsl(var(--hue), 42%, 72%);
-  background: rgba(8, 8, 14, 0.55);
-  padding: 0.24rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid hsla(var(--hue), 45%, 58%, 0.28);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.card-index__sep {
-  opacity: 0.45;
-  margin: 0 0.08em;
-}
-
-.card-meta {
-  display: none;
-  font-size: 0.56rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(244, 244, 250, 0.42);
-}
-
-.carousel-item.is-active .card-meta,
-.carousel-item.is-center-focus .card-meta {
-  display: block;
-}
-
-.card-number {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 5;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--file-muted);
-  background: rgba(255, 255, 255, 0.55);
-  padding: 0.28rem 0.55rem;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.card-body {
-  position: relative;
-  z-index: 2;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 1.1rem;
-  background: transparent;
-  isolation: isolate;
-}
-
-.card-tagline {
-  display: none;
-  margin: 0;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: hsl(var(--hue), 52%, 78%);
-  text-align: center;
-  line-height: 1.4;
-  max-width: 16ch;
-}
-
-.carousel-item.is-active .card-tagline {
-  display: block;
-}
-
-.card-open-hint {
-  display: none;
-  margin-top: 0.45rem;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: hsl(var(--hue), 55%, 78%);
-  opacity: 0.95;
-}
-
-.carousel-item.is-active .card-open-hint,
-.carousel-item.is-center-focus .card-open-hint {
-  display: block;
+.carousel-item.is-active .file-sheet--front {
+  transform: translateX(-44%) rotate(10deg);
+  opacity: 1;
 }
 
 .file-card[role="button"] {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.file-card[role="button"]:focus {
+  outline: none;
 }
 
 .file-card[role="button"]:focus-visible {
   outline: 2px solid hsl(var(--hue), 70%, 68%);
   outline-offset: 4px;
+}
+
+.file-pocket.is-sweeping .file-pocket-shine {
+  animation: pocket-shine-sweep 0.85s ease-out;
+}
+
+@keyframes pocket-shine-sweep {
+  0% { opacity: 0.35; transform: translateY(-8%); }
+  40% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .carousel-progress {
@@ -1224,41 +1034,34 @@ body.is-service-view-locked {
 .service-detail__header-box {
   position: relative;
   z-index: 2;
-  padding: 0.9rem 1.85rem;
-  border: 1px solid hsla(var(--service-hue), 42%, 58%, 0.38);
-  border-radius: 14px;
-  background: rgba(12, 12, 22, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  padding: 0.72rem 1.55rem;
+  border-radius: 999px;
+  background: rgba(14, 14, 24, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid hsla(var(--service-hue), 42%, 58%, 0.3);
+  color: rgba(244, 244, 250, 0.94);
+  overflow: hidden;
+  will-change: transform;
   box-shadow:
-    0 10px 36px rgba(0, 0, 0, 0.38),
-    0 0 28px hsla(var(--service-hue), 55%, 48%, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    0 4px 18px rgba(0, 0, 0, 0.34),
+    0 0 14px hsla(var(--service-hue), 50%, 52%, 0.12);
 }
 
 .service-detail__header-box::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    hsla(var(--service-hue), 60%, 62%, 0.1) 0%,
-    transparent 55%
-  );
-  pointer-events: none;
+  display: none;
 }
 
 .service-detail__title {
   margin: 0;
   position: relative;
   font-family: var(--font-display);
-  font-size: clamp(1.55rem, 5.5vw, 2.35rem);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: rgba(248, 248, 252, 0.96);
-  text-shadow: 0 0 32px hsla(var(--service-hue), 70%, 58%, 0.28);
+  font-size: clamp(1.2rem, 4.2vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: rgba(244, 244, 250, 0.94);
+  text-shadow: none;
 }
 
 .service-detail__threads-area {
@@ -1323,24 +1126,6 @@ body.is-service-view-locked {
     0 0 14px hsla(var(--service-hue), 50%, 52%, 0.12);
 }
 
-.card-title {
-  font-size: 1.02rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: -0.01em;
-  color: #f7f7fb;
-  text-align: center;
-  line-height: 1.25;
-  transition: font-family 0.3s var(--ease-gigi);
-}
-
-.carousel-item.is-active .card-title {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 1.22rem;
-  letter-spacing: -0.015em;
-  color: #ffffff;
-}
 
 .card-text {
   font-size: 0.78rem;
@@ -1414,8 +1199,8 @@ body.is-service-view-locked {
 /* ── Responsive ── */
 @media (max-width: 900px) {
   :root {
-    --card-w: clamp(210px, 78vw, 300px);
-    --card-h: clamp(210px, 48vh, 280px);
+    --card-w: clamp(230px, 84vw, 330px);
+    --card-h: clamp(260px, 58vh, 360px);
     --stage-lift: 4vh;
   }
 
@@ -1475,7 +1260,11 @@ body.is-service-view-locked {
   }
 
   .service-detail__header-box {
-    padding: 0.75rem 1.35rem;
+    padding: 0.62rem 1.2rem;
+  }
+
+  .service-detail__title {
+    font-size: clamp(1.05rem, 5vw, 1.35rem);
   }
 
   .service-detail__float-icon {
@@ -1501,20 +1290,24 @@ body.is-service-view-locked {
     opacity: 0.65;
   }
 
-  .file-face {
-    border-radius: 2px 12px 12px 12px;
-  }
-
-  .card-body {
-    padding: 2rem 1rem 1rem;
+  .file-card {
+    --file-radius: 1.25rem;
   }
 
   .card-title {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .carousel-item.is-active .card-title {
-    font-size: 1.12rem;
+    font-size: 1.02rem;
+  }
+
+  .card-tagline {
+    font-size: 0.64rem;
+  }
+
+  .file-flap-body {
+    padding: 0.1rem 0.85rem 0.85rem;
   }
 
   .card-cta {
@@ -1581,33 +1374,7 @@ body.is-service-view-locked {
     animation-delay: 0.15s;
   }
 
-  /* Mobile focus: one center card + side glow peeks */
-  .carousel-item.is-glow-peek {
-    pointer-events: none;
-  }
-
-  .carousel-item.is-glow-peek .file-tab,
-  .carousel-item.is-glow-peek .file-stack,
-  .carousel-item.is-glow-peek .file-sweep,
-  .carousel-item.is-glow-peek .file-fold,
-  .carousel-item.is-glow-peek .file-tab-badge,
-  .carousel-item.is-glow-peek .file-grid,
-  .carousel-item.is-glow-peek .card-body,
-  .carousel-item.is-glow-peek .card-number,
-  .carousel-item.is-glow-peek .card-index,
-  .carousel-item.is-glow-peek .card-progress {
-    display: none;
-  }
-
-  .carousel-item.is-glow-peek .file-face {
-    background: rgba(18, 18, 30, 0.35);
-    border-color: hsla(var(--hue), 50%, 58%, 0.2);
-    filter: blur(8px) saturate(1.2) brightness(1.1);
-    box-shadow:
-      0 0 48px hsla(var(--hue), 75%, 55%, 0.45),
-      0 0 80px hsla(var(--hue), 65%, 48%, 0.2);
-  }
-
+  /* Mobile focus: one center card only */
   .carousel-item.is-center-focus {
     z-index: 4;
   }
@@ -1615,25 +1382,16 @@ body.is-service-view-locked {
   .carousel-item.is-center-focus .file-card {
     transform: translateY(-8px);
   }
-
-  .carousel-item.is-center-focus .file-face {
-    box-shadow:
-      0 28px 76px hsla(var(--hue), 58%, 42%, 0.42),
-      0 12px 32px rgba(0, 0, 0, 0.52),
-      0 0 0 1px hsla(var(--hue), 50%, 62%, 0.26) inset;
-  }
 }
 
 /* While scrubbing folders — drop expensive paint so scroll stays smooth */
-body.is-carousel-scrolling .file-face {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-body.is-carousel-scrolling .file-glow,
-body.is-carousel-scrolling .file-tab::before,
+body.is-carousel-scrolling .file-pocket-shine,
 body.is-carousel-scrolling .ambient-grain {
   opacity: 0 !important;
+}
+
+body.is-carousel-scrolling .file-sheet::before {
+  display: none;
 }
 
 body.is-carousel-scrolling .carousel-item {
@@ -1647,41 +1405,19 @@ body.is-carousel-scrolling .carousel-item {
     will-change: auto;
   }
 
-  .file-card,
-  .file-face,
-  .file-tab {
+  .file-card {
     transform-style: flat;
+    will-change: auto;
   }
 
-  .file-face {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, transparent 42%),
-      linear-gradient(180deg, #1c1c2c, #12121e);
+  /* Allow hinge-open while hovering; keep flat otherwise for crisp type */
+  .file-card.is-folder-open {
+    transform-style: preserve-3d;
   }
 
-  .carousel-item.is-active .file-face {
-    background:
-      linear-gradient(155deg, rgba(255, 255, 255, 0.1) 0%, transparent 46%),
-      radial-gradient(ellipse at 50% 0%, hsla(var(--hue), 58%, 52%, 0.12), transparent 58%),
-      linear-gradient(180deg, #1f1f30, #151522);
-  }
-
-  .carousel-item:not(.is-active) .file-face {
-    background: linear-gradient(180deg, #141420, #0e0e16);
-  }
-
-  .card-body {
-    transform: translateZ(0);
-  }
-
-  .card-body,
   .card-title,
   .card-tagline,
-  .card-open-hint,
-  .file-tab-label,
-  .file-tab-badge {
+  .card-meta {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: geometricPrecision;
@@ -1689,15 +1425,11 @@ body.is-carousel-scrolling .carousel-item {
   }
 
   .card-title {
-    font-size: 1.06rem;
+    font-size: 1.08rem;
   }
 
   .carousel-item.is-active .card-title {
-    font-size: 1.28rem;
-  }
-
-  .file-card {
-    will-change: auto;
+    font-size: 1.16rem;
   }
 }
 
@@ -1708,23 +1440,6 @@ body.is-mobile-perf .ambient-grain {
 
 body.is-mobile-perf .ambient-particles {
   opacity: 1;
-}
-
-body.is-mobile-perf .carousel-item.is-active .file-face {
-  background: rgba(22, 22, 36, 0.94);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-body.is-mobile-perf .carousel-item.is-active .file-glow,
-body.is-mobile-perf .carousel-item.is-active .file-tab::before {
-  animation: none;
-}
-
-body.is-mobile-perf .carousel-item.is-glow-peek .file-face {
-  filter: none;
-  background: rgba(18, 18, 30, 0.5);
-  box-shadow: 0 0 36px hsla(var(--hue), 70%, 52%, 0.38);
 }
 
 body.is-mobile-perf .carousel-item {
@@ -1738,8 +1453,8 @@ body.is-mobile-perf #arc-light {
 
 @media (max-width: 480px) {
   :root {
-    --card-w: clamp(220px, 86vw, 320px);
-    --card-h: clamp(220px, 52vh, 300px);
+    --card-w: clamp(240px, 90vw, 340px);
+    --card-h: clamp(280px, 62vh, 380px);
     --stage-lift: 5vh;
   }
 
@@ -1782,11 +1497,6 @@ body.is-mobile-perf #arc-light {
     font-size: 0.72rem;
   }
 
-  .carousel-item.is-active .file-face {
-    box-shadow:
-      0 14px 40px rgba(0, 0, 0, 0.3),
-      0 0 0 1px hsla(var(--hue), 40%, 50%, 0.1) inset;
-  }
 
   .card-cta {
     display: none !important;
@@ -1795,7 +1505,7 @@ body.is-mobile-perf #arc-light {
 
 @media (max-height: 700px) and (max-width: 900px) {
   :root {
-    --card-h: clamp(250px, 58vh, 340px);
+    --card-h: clamp(270px, 64vh, 380px);
     --stage-lift: 2vh;
   }
 
@@ -1815,9 +1525,12 @@ body.is-mobile-perf #arc-light {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .carousel-item.is-active .file-tab::before,
-  .carousel-item.is-active .file-glow {
-    animation: none;
+  .carousel-item.is-active .file-card {
+    transition: none;
+  }
+
+  .file-card.is-folder-open .file-flap {
+    filter: none;
   }
 
   .scroll-dot {
